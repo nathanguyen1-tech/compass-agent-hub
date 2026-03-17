@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏯 Bản Chỉ Huy — Agent Hub</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #21262d;
+    --border: #30363d; --text: #e6edf3; --muted: #7d8590;
+    --blue: #0066cc; --green: #2ea043; --yellow: #d29922;
+    --red: #da3633; --purple: #8957e5; --cyan: #39d353;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+
+  /* Header */
+  header { background: linear-gradient(135deg, #0d2137 0%, #0a1628 100%); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 18px; font-weight: 700; }
+  header h1 span { color: var(--blue); }
+  .header-meta { margin-left: auto; display: flex; gap: 16px; align-items: center; font-size: 13px; color: var(--muted); }
+  .rank-badge { background: linear-gradient(135deg, #f5a623, #e8920a); color: #000; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+
+  /* Layout */
+  .main { display: grid; grid-template-columns: 320px 1fr; flex: 1; overflow: hidden; }
+
+  /* Sidebar */
+  aside { border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .aside-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .aside-header h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .btn-add { background: var(--blue); border: none; color: white; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .btn-add:hover { background: #0052a3; }
+
+  .agents-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .agent-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: all .2s; position: relative; }
+  .agent-card:hover { border-color: var(--blue); background: var(--surface2); }
+  .agent-card.active { border-color: var(--blue); background: #0d2137; }
+  .agent-card .agent-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .agent-emoji { font-size: 24px; }
+  .agent-info h3 { font-size: 14px; font-weight: 600; }
+  .agent-info .rank { font-size: 11px; color: var(--muted); }
+  .status-dot { position: absolute; top: 12px; right: 12px; width: 10px; height: 10px; border-radius: 50%; }
+  .status-idle { background: var(--muted); }
+  .status-running { background: var(--blue); animation: pulse 1.5s infinite; }
+  .status-pending_approval { background: var(--yellow); animation: pulse 1s infinite; }
+  .status-done { background: var(--green); }
+  .status-error { background: var(--red); }
+  .status-rejected { background: var(--red); opacity: .6; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .agent-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .agent-actions { display: flex; gap: 6px; margin-top: 10px; }
+  .btn-run { background: var(--green); border: none; color: white; padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
+  .btn-run:hover { background: #238636; }
+  .btn-stop { background: var(--red); border: none; color: white; padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .btn-stop:hover { background: #b91c1c; }
+  .btn-log { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+
+  /* Approval panel */
+  .approval-section { border-top: 1px solid var(--border); padding: 10px 8px; }
+  .approval-section h3 { font-size: 12px; color: var(--yellow); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; padding: 0 8px 8px; }
+  .approval-card { background: #2a1f00; border: 1px solid #5a3e00; border-radius: 8px; padding: 10px; margin-bottom: 6px; }
+  .approval-card .a-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+  .approval-card .a-time { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .approval-btns { display: flex; gap: 6px; }
+  .btn-approve { background: var(--green); border: none; color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
+  .btn-reject { background: var(--red); border: none; color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+
+  /* Content area */
+  .content { display: flex; flex-direction: column; overflow: hidden; }
+  .content-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+  .content-header h2 { font-size: 16px; font-weight: 600; }
+  .status-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  .badge-idle { background: var(--surface2); color: var(--muted); }
+  .badge-running { background: #0d2137; color: var(--blue); border: 1px solid var(--blue); }
+  .badge-pending_approval { background: #2a1f00; color: var(--yellow); border: 1px solid var(--yellow); }
+  .badge-done { background: #0d2f1a; color: var(--green); }
+  .badge-error { background: #2a0d0d; color: var(--red); }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 20px; }
+  .tab { padding: 10px 16px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); }
+  .tab.active { color: var(--text); border-bottom-color: var(--blue); }
+
+  /* Log terminal */
+  .terminal { flex: 1; overflow-y: auto; padding: 16px 20px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12.5px; line-height: 1.7; background: #0a0e14; }
+  .terminal .log-line { white-space: pre-wrap; word-break: break-all; }
+  .log-ts { color: #4a5568; margin-right: 8px; }
+  .log-icon-tool { color: #63b3ed; }
+  .log-icon-ok { color: var(--green); }
+  .log-icon-err { color: var(--red); }
+  .log-icon-info { color: var(--yellow); }
+  .log-icon-ai { color: var(--purple); }
+  .log-empty { color: var(--muted); text-align: center; padding: 60px; font-size: 14px; }
+
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 16px 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: center; }
+  .stat-card .stat-num { font-size: 28px; font-weight: 700; }
+  .stat-card .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* Empty state */
+  .empty-state { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: var(--muted); }
+  .empty-state .big-emoji { font-size: 48px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:24px">🏯</div>
+  <div>
+    <h1>Bản Chỉ <span>Huy</span></h1>
+    <div style="font-size:11px;color:var(--muted)">Agent Command Center</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;margin-left:16px">
+    <div style="background:#1a2a3a;border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px">
+      👑 Chủ tướng: <b>Bạn</b>
+    </div>
+    <div style="font-size:16px">→</div>
+    <div style="background:#1a2a3a;border:1px solid #f5a623;border-radius:20px;padding:4px 12px;font-size:12px;color:#f5a623">
+      ⚔️ Đại tướng: <b>Nathan-Ubu</b>
+    </div>
+    <div style="font-size:16px">→</div>
+    <div style="background:#1a2a3a;border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px">
+      🤖 Tướng lĩnh: <span id="agentCount">...</span>
+    </div>
+  </div>
+  <div class="header-meta">
+    <span id="clock"></span>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Sidebar: Agent List -->
+  <aside>
+    <div class="aside-header">
+      <h2>⚔️ Tướng lĩnh</h2>
+      <button class="btn-add" onclick="showAddAgent()">+ Thêm</button>
+    </div>
+    <div class="agents-list" id="agentsList"></div>
+
+    <!-- Approval Queue -->
+    <div class="approval-section" id="approvalSection" style="display:none">
+      <h3>⏳ Chờ phê duyệt</h3>
+      <div id="approvalList"></div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="content">
+    <div id="emptyState" class="empty-state">
+      <div class="big-emoji">🏯</div>
+      <div style="font-size:18px;font-weight:600;color:var(--text)">Chọn một Agent để xem</div>
+      <div>Click vào agent bên trái để xem log và điều khiển</div>
+    </div>
+
+    <div id="agentDetail" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="content-header">
+        <span id="detailEmoji" style="font-size:24px"></span>
+        <h2 id="detailName"></h2>
+        <span id="detailBadge" class="status-badge"></span>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn-run" id="btnRun" onclick="runAgent()">▶ Chạy</button>
+          <button class="btn-stop" id="btnStop" onclick="stopAgent()" style="display:none">⏹ Dừng</button>
+          <button class="btn-log" onclick="refreshLogs()">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('logs', this)">📋 Live Log</div>
+        <div class="tab" onclick="switchTab('info', this)">ℹ️ Thông tin</div>
+      </div>
+
+      <div id="tabLogs" class="terminal" id="terminal">
+        <div class="log-empty">Chưa có log. Nhấn ▶ Chạy để bắt đầu.</div>
+      </div>
+
+      <div id="tabInfo" style="display:none;padding:20px;overflow-y:auto;flex:1">
+        <div id="agentInfoContent"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedAgent = null;
+let ws = null;
+let allAgents = [];
+
+// Clock
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('vi-VN');
+}, 1000);
+
+// ── Fetch agents ─────────────────────────────────────────────
+async function fetchAgents() {
+  const res = await fetch('/api/agents');
+  allAgents = await res.json();
+  document.getElementById('agentCount').textContent = allAgents.length;
+  renderAgentList();
+  if (selectedAgent) {
+    const updated = allAgents.find(a => a.id === selectedAgent.id);
+    if (updated) updateDetail(updated);
+  }
+}
+
+function renderAgentList() {
+  const el = document.getElementById('agentsList');
+  el.innerHTML = allAgents.map(a => `
+    <div class="agent-card ${selectedAgent?.id === a.id ? 'active' : ''}" onclick="selectAgent('${a.id}')">
+      <div class="status-dot status-${a.status}"></div>
+      <div class="agent-top">
+        <div class="agent-emoji">${a.emoji}</div>
+        <div class="agent-info">
+          <h3>${a.name}</h3>
+          <div class="rank">${a.rank}</div>
+        </div>
+      </div>
+      <div class="agent-desc">${a.description}</div>
+      <div class="agent-actions">
+        <button class="btn-run" onclick="event.stopPropagation(); quickRun('${a.id}')">▶</button>
+        ${a.status === 'running' ? `<button class="btn-stop" onclick="event.stopPropagation(); quickStop('${a.id}')">⏹</button>` : ''}
+        <span style="font-size:11px;color:var(--muted);margin-left:auto;align-self:center">
+          ${a.last_run ? new Date(a.last_run).toLocaleTimeString('vi-VN') : 'Chưa chạy'}
+        </span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Select agent ─────────────────────────────────────────────
+async function selectAgent(agentId) {
+  selectedAgent = allAgents.find(a => a.id === agentId);
+  document.getElementById('emptyState').style.display = 'none';
+  const detail = document.getElementById('agentDetail');
+  detail.style.display = 'flex';
+
+  updateDetail(selectedAgent);
+  renderAgentList();
+
+  // Connect WebSocket
+  if (ws) ws.close();
+  ws = new WebSocket(`ws://${location.host}/ws/${agentId}`);
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    appendLog(data);
+    if (data.type === 'done' || data.type === 'started') fetchAgents();
+  };
+
+  // Load existing logs
+  await refreshLogs();
+}
+
+function updateDetail(agent) {
+  document.getElementById('detailEmoji').textContent = agent.emoji;
+  document.getElementById('detailName').textContent = agent.name;
+  const badge = document.getElementById('detailBadge');
+  const labels = {idle:'Đang chờ', running:'Đang chạy', pending_approval:'Chờ duyệt', done:'Hoàn thành', error:'Lỗi', rejected:'Từ chối'};
+  badge.textContent = labels[agent.status] || agent.status;
+  badge.className = `status-badge badge-${agent.status}`;
+
+  const runBtn = document.getElementById('btnRun');
+  const stopBtn = document.getElementById('btnStop');
+  if (agent.status === 'running') {
+    runBtn.style.display = 'none';
+    stopBtn.style.display = '';
+  } else {
+    runBtn.style.display = '';
+    stopBtn.style.display = 'none';
+  }
+
+  // Info tab
+  document.getElementById('agentInfoContent').innerHTML = `
+    <div style="display:grid;gap:12px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">THÔNG TIN</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tr><td style="color:var(--muted);padding:4px 0;width:140px">ID:</td><td>${agent.id}</td></tr>
+          <tr><td style="color:var(--muted);padding:4px 0">Cấp bậc:</td><td>${agent.rank}</td></tr>
+          <tr><td style="color:var(--muted);padding:4px 0">Trigger:</td><td>${agent.trigger}</td></tr>
+          <tr><td style="color:var(--muted);padding:4px 0">Cần duyệt:</td><td>${agent.requires_approval ? '✅ Có' : '❌ Không'}</td></tr>
+          <tr><td style="color:var(--muted);padding:4px 0">Script:</td><td style="font-family:monospace;font-size:11px">${agent.script}</td></tr>
+          <tr><td style="color:var(--muted);padding:4px 0">Workspace:</td><td style="font-family:monospace;font-size:11px">${agent.workspace}</td></tr>
+          <tr><td style="color:var(--muted);padding:4px 0">Lần cuối chạy:</td><td>${agent.last_run ? new Date(agent.last_run).toLocaleString('vi-VN') : 'Chưa'}</td></tr>
+        </table>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">TAGS</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${(agent.tags||[]).map(t => `<span style="background:var(--surface2);border:1px solid var(--border);padding:3px 10px;border-radius:20px;font-size:12px">#${t}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Logs ─────────────────────────────────────────────────────
+function colorLine(line) {
+  if (line.includes('✅') || line.includes('[✓]') || line.includes('pass')) return 'log-icon-ok';
+  if (line.includes('❌') || line.includes('[✗]') || line.includes('error') || line.includes('FAIL')) return 'log-icon-err';
+  if (line.includes('📖') || line.includes('🔧') || line.includes('⚙️') || line.includes('🔍')) return 'log-icon-tool';
+  if (line.includes('💬') || line.includes('🤖')) return 'log-icon-ai';
+  if (line.includes('[⚠]') || line.includes('⏳') || line.includes('warn')) return 'log-icon-info';
+  return '';
+}
+
+function appendLog(data) {
+  const terminal = document.getElementById('tabLogs');
+  const line = data.line || (data.type === 'started' ? `\n🚀 Agent bắt đầu: ${data.cmd}` :
+    data.type === 'done' ? `\n${data.rc === 0 ? '✅' : '❌'} Hoàn thành (exit: ${data.rc})` :
+    data.type === 'approved' ? '✅ Đã phê duyệt — commit + push...' :
+    data.type === 'rejected' ? '❌ Từ chối — không commit.' : null);
+  if (!line) return;
+
+  const cls = colorLine(line);
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-ts">${new Date().toLocaleTimeString('vi-VN')}</span><span class="${cls}">${escHtml(line)}</span>`;
+  terminal.appendChild(div);
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function refreshLogs() {
+  if (!selectedAgent) return;
+  const res = await fetch(`/api/agents/${selectedAgent.id}/logs?lines=200`);
+  const data = await res.json();
+  const terminal = document.getElementById('tabLogs');
+  if (data.lines.length === 0) {
+    terminal.innerHTML = '<div class="log-empty">Chưa có log. Nhấn ▶ Chạy để bắt đầu.</div>';
+    return;
+  }
+  terminal.innerHTML = data.lines.map(l => {
+    const cls = colorLine(l);
+    return `<div class="log-line"><span class="${cls}">${escHtml(l)}</span></div>`;
+  }).join('');
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+// ── Actions ──────────────────────────────────────────────────
+async function runAgent() {
+  if (!selectedAgent) return;
+  await quickRun(selectedAgent.id);
+}
+
+async function quickRun(agentId) {
+  await fetch(`/api/agents/${agentId}/run`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({args:[]})});
+  setTimeout(fetchAgents, 500);
+  if (selectedAgent?.id === agentId) {
+    document.getElementById('tabLogs').innerHTML = '';
+  }
+}
+
+async function stopAgent() {
+  if (!selectedAgent) return;
+  await quickStop(selectedAgent.id);
+}
+
+async function quickStop(agentId) {
+  await fetch(`/api/agents/${agentId}/stop`, {method:'POST'});
+  setTimeout(fetchAgents, 500);
+}
+
+// ── Approvals ─────────────────────────────────────────────────
+async function fetchApprovals() {
+  const res = await fetch('/api/approvals');
+  const approvals = await res.json();
+  const pending = approvals.filter(a => a.status === 'pending');
+  const section = document.getElementById('approvalSection');
+  const list = document.getElementById('approvalList');
+
+  if (pending.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = pending.map(a => {
+    const agent = allAgents.find(ag => ag.id === a.agent_id) || {};
+    return `
+      <div class="approval-card">
+        <div class="a-title">${agent.emoji || '🤖'} ${agent.name || a.agent_id}</div>
+        <div class="a-time">${new Date(a.created_at).toLocaleString('vi-VN')}</div>
+        <div class="approval-btns">
+          <button class="btn-approve" onclick="handleApproval('${a.id}','approve')">✅ Duyệt</button>
+          <button class="btn-reject" onclick="handleApproval('${a.id}','reject')">❌ Từ chối</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function handleApproval(id, action) {
+  await fetch(`/api/approvals/${id}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action})});
+  fetchApprovals();
+  fetchAgents();
+}
+
+// ── Tabs ──────────────────────────────────────────────────────
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tabLogs').style.display = tab === 'logs' ? 'block' : 'none';
+  document.getElementById('tabInfo').style.display = tab === 'info' ? 'block' : 'none';
+}
+
+function showAddAgent() {
+  alert('Tính năng đăng ký agent mới — coming soon!\n\nHiện tại: thêm vào registry.json và restart server.');
+}
+
+// ── Init ──────────────────────────────────────────────────────
+fetchAgents();
+fetchApprovals();
+setInterval(fetchAgents, 3000);
+setInterval(fetchApprovals, 5000);
+</script>
+</body>
+</html>
