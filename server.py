@@ -4,6 +4,7 @@ Agent Hub — Bản chỉ huy
 Server quản lý tất cả agents, live logs, approval queue
 """
 import asyncio, json, os, subprocess, time, uuid
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -20,7 +21,31 @@ LOGS_DIR = BASE / "logs"
 APPROVALS_FILE = BASE / "approvals.json"
 LOGS_DIR.mkdir(exist_ok=True)
 
-app = FastAPI(title="Agent Hub — Bản chỉ huy")
+# ── Startup / Lifespan ───────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Khi server khởi động, reset tất cả status về 'idle'
+    trừ những agent đang thực sự chạy (có PID trong agent_processes)."""
+    try:
+        reg = load_registry()
+        changed = 0
+        for a in reg["agents"]:
+            agent_id = a["id"]
+            # Chỉ reset nếu KHÔNG có process đang chạy thực sự
+            if agent_id not in agent_processes or agent_processes[agent_id].poll() is not None:
+                if a.get("status") not in ("idle", "done", "rejected"):
+                    a["status"] = "idle"
+                    changed += 1
+        if changed:
+            save_registry(reg)
+            print(f"[startup] Reset {changed} agent(s) về 'idle'")
+    except Exception as e:
+        print(f"[startup] Lỗi reset status: {e}")
+    yield  # Server chạy ở đây
+
+
+app = FastAPI(title="Agent Hub — Bản chỉ huy", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # In-memory state
@@ -95,6 +120,13 @@ async def run_agent(agent_id: str, req: RunRequest, background_tasks: Background
         raise HTTPException(404, "Agent không tồn tại")
     if agent_id in agent_processes and agent_processes[agent_id].poll() is None:
         raise HTTPException(409, "Agent đang chạy")
+
+    # Kiểm tra script hợp lệ trước khi chạy
+    script = agent.get("script", "")
+    if not script:
+        raise HTTPException(400, f"Agent '{agent_id}' chưa được cấu hình script. Hãy cập nhật registry.json.")
+    if not Path(script).exists():
+        raise HTTPException(400, f"Script không tồn tại: {script}")
 
     log_file = LOGS_DIR / f"{agent_id}-{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     update_agent_status(agent_id, "running", {"last_run": datetime.now().isoformat(), "last_log": str(log_file)})
