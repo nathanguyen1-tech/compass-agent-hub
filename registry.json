@@ -11,12 +11,13 @@
       "trigger": "manual",
       "status": "idle",
       "requires_approval": true,
-      "last_run": null,
+      "last_run": "2026-03-17T14:16:23.130138",
       "tags": [
         "medical",
         "feedback",
         "automation"
-      ]
+      ],
+      "last_log": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/feedback-bot-20260317_141623.log"
     },
     {
       "id": "hub-keeper",
@@ -29,12 +30,13 @@
       "trigger": "manual",
       "status": "idle",
       "requires_approval": true,
-      "last_run": null,
+      "last_run": "2026-03-17T13:08:19.106306",
       "tags": [
         "devops",
         "code",
         "github"
-      ]
+      ],
+      "last_log": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/hub-keeper-20260317_130819.log"
     }
   ]
 }
