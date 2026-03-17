@@ -12,7 +12,29 @@
       "status": "idle",
       "requires_approval": true,
       "last_run": null,
-      "tags": ["medical", "feedback", "automation"]
+      "tags": [
+        "medical",
+        "feedback",
+        "automation"
+      ]
+    },
+    {
+      "id": "hub-keeper",
+      "name": "HubKeeper",
+      "emoji": "🏗️",
+      "rank": "Tướng lĩnh",
+      "description": "Quản lý source code Agent Hub — thêm features, fix bugs, deploy",
+      "workspace": "/home/nathan-ubutu/.openclaw/workspace-hub-keeper",
+      "script": "",
+      "trigger": "manual",
+      "status": "idle",
+      "requires_approval": true,
+      "last_run": null,
+      "tags": [
+        "devops",
+        "code",
+        "github"
+      ]
     }
   ]
 }
