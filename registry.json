@@ -5,19 +5,19 @@
       "name": "FeedbackBot",
       "emoji": "🩺",
       "rank": "Tướng lĩnh",
-      "description": "Đọc feedback MD từ SharePoint Excel → Claude Code → deploy",
+      "description": "Đọc feedback.md từ bác sĩ → implement fix → chạy tests → chờ duyệt → commit",
       "workspace": "/home/nathan-ubutu/.openclaw/workspace-compass-feedback",
-      "script": "/home/nathan-ubutu/.openclaw/workspace/skills/md-feedback-bridge/scripts/run_feedback_bridge.sh",
+      "script": "",
       "trigger": "manual",
       "status": "idle",
       "requires_approval": true,
-      "last_run": "2026-03-17T14:16:23.130138",
+      "last_run": "2026-03-18T10:19:33.557618",
       "tags": [
         "medical",
         "feedback",
         "automation"
       ],
-      "last_log": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/feedback-bot-20260317_141623.log"
+      "last_log": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/feedback-bot-20260318_101933.log"
     },
     {
       "id": "hub-keeper",
@@ -37,6 +37,24 @@
         "github"
       ],
       "last_log": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/hub-keeper-20260317_130819.log"
+    },
+    {
+      "id": "demo-feedback",
+      "name": "Demo FeedbackBot",
+      "emoji": "🎬",
+      "rank": "Tướng lĩnh",
+      "description": "Demo: đọc feedback MD → Claude Code → chờ duyệt",
+      "workspace": "/home/nathan-ubutu/.openclaw/workspace",
+      "script": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/scripts/demo_agent.sh",
+      "trigger": "manual",
+      "status": "rejected",
+      "requires_approval": true,
+      "last_run": "2026-03-18T11:03:28.152839",
+      "tags": [
+        "demo",
+        "feedback"
+      ],
+      "last_log": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/demo-feedback-20260318_110328.log"
     }
   ]
 }
