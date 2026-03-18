@@ -336,12 +336,12 @@ async function selectAgent(agentId) {
   renderAgentList();
   updateDetail(selectedAgent);
 
-  // Reset về tab Logs, xóa nội dung cũ
+  // Reset về tab Logs
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab')[0].classList.add('active');
   document.getElementById('tabLogs').style.display = 'block';
   document.getElementById('tabInfo').style.display = 'none';
-  document.getElementById('tabLogs').innerHTML = '<div class="log-empty">Đang tải...</div>';
+  document.getElementById('tabLogs').innerHTML = '<div class="log-empty" id="loadingMsg">⏳ Đang tải log...</div>';
 
   if (agentWs) agentWs.close();
   agentWs = new WebSocket(`ws://${location.host}/ws/${agentId}`);
@@ -450,6 +450,7 @@ async function refreshLogs() {
     terminal.innerHTML = '<div class="log-empty">Chưa có hoạt động nào.<br><span style="font-size:11px;color:var(--muted)">Agent này sẽ báo cáo khi đang làm việc.</span></div>';
     return;
   }
+  terminal.innerHTML = '';
 
   terminal.innerHTML = actData.events.map(e => {
     const cls = { success:'log-ok', error:'log-err', warning:'log-warn', progress:'log-tool', info:'' }[e.level] || '';

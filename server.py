@@ -198,6 +198,7 @@ async def _watch_session_transcript(agent_id: str, oc_id: str):
                         existing_msgs = {e["message"] for e in activity_log}
                         if description not in existing_msgs:
                             activity_log.append(event)
+                            _save_activity_to_disk(event)  # Persist → không mất khi navigate
                     last_pos = session_file.stat().st_size
                     print(f"[transcript] {agent_id}: loaded {len(recent_calls)} recent tool calls")
                 except Exception as e:
