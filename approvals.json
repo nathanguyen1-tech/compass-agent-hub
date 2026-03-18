@@ -30,5 +30,13 @@
     "log_file": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/health-check-20260318_132639.log",
     "status": "rejectd",
     "resolved_at": "2026-03-18T13:27:33.525077"
+  },
+  {
+    "id": "6a50b891",
+    "agent_id": "health-check",
+    "created_at": "2026-03-18T16:52:27.243545",
+    "log_file": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/health-check-20260318_165218.log",
+    "status": "approved",
+    "resolved_at": "2026-03-18T16:53:01.529527"
   }
 ]

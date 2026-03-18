@@ -1067,22 +1067,39 @@ async def general_chat_stream(req: ChatRequest, background_tasks: BackgroundTask
     )
 
     # ── Phát hiện agent được nhắm đến ──────────────────────────
-    # Tìm xem user có nhắc đến agent nào không
     target_agent = None
     msg_lower = user_msg.lower()
+
+    # Build keyword map cho mỗi agent
+    def _agent_keywords(a: dict) -> list:
+        name_l = a["name"].lower()
+        kws = [name_l, a["id"].lower(), a.get("openclaw_agent_id","").lower()]
+        # Thêm variations phổ biến
+        kws += [name_l.replace("-"," "), name_l.replace(" ","-"), name_l.replace(" ","")]
+        return [k for k in kws if k]
+
     for a in agents:
-        oc_id = a.get("openclaw_agent_id", "")
-        if not oc_id:
+        if not a.get("openclaw_agent_id"):
             continue
-        # Match theo tên, id, hoặc nickname
-        keywords = [a["name"].lower(), a["id"].lower(), oc_id.lower()]
-        if a["name"].lower() == "hubkeeper":
-            keywords += ["hub keeper", "hub-keeper", "hubkeeper"]
-        if a["name"].lower() == "feedbackbot":
-            keywords += ["feedback bot", "feedbackbot", "feedback-bot"]
-        if any(k in msg_lower for k in keywords):
+        if any(k in msg_lower for k in _agent_keywords(a)):
             target_agent = a
             break
+
+    # Câu hỏi thuần trạng thái → CHAT với Đại Tướng, không delegate
+    # Logic: status nếu có từ hỏi trạng thái VÀ không có động từ hành động rõ ràng
+    status_phrases  = ["tình hình", "status", "đang thế nào", "ra sao", "như thế nào",
+                       "có khoẻ không", "đang làm gì", "hôm nay làm gì", "đang chạy không",
+                       "có vấn đề không", "bao nhiêu commit", "hôm nay commit"]
+    action_phrases  = ["bảo", "gọi", "nhờ", "yêu cầu", "giao cho", "lệnh cho", "hãy làm",
+                       "kích hoạt", "thực hiện", "hãy thêm", "hãy sửa", "hãy viết",
+                       "deploy", "push", "build", "fix", "implement", "tạo", "xoá"]
+
+    has_status  = any(w in msg_lower for w in status_phrases)
+    has_action  = any(w in msg_lower for w in action_phrases)
+    is_pure_status = target_agent and has_status and not has_action
+
+    # Delegate nếu nhắc tên agent VÀ không phải câu hỏi thuần trạng thái
+    is_command_to_agent = bool(target_agent) and not is_pure_status
 
     full_prompt = (
         "Mày là Đại Tướng Nathan-Ubu, tổng chỉ huy đội quân AI phục vụ Chủ tướng.\n"
@@ -1093,12 +1110,6 @@ async def general_chat_stream(req: ChatRequest, background_tasks: BackgroundTask
         f"{army_detail}\n\n"
         f"Chủ tướng: {user_msg}"
     )
-
-    # Nếu có agent target và không phải câu hỏi về agent đó → giao thẳng
-    # Phân biệt: hỏi về agent (tình hình, status) vs ra lệnh cho agent
-    command_verbs = ["bảo", "nói với", "hỏi", "giao", "lệnh cho", "chỉ đạo", "nhờ",
-                     "yêu cầu", "ra lệnh", "hãy", "ask", "tell", "command", "order", "assign"]
-    is_command_to_agent = target_agent and any(v in msg_lower for v in command_verbs)
 
 
     _oc_bin = __import__('shutil').which("openclaw") or "/home/nathan-ubutu/.npm-global/bin/openclaw"
