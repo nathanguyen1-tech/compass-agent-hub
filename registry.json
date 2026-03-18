@@ -29,7 +29,7 @@
       "workspace": "/home/nathan-ubutu/.openclaw/workspace-hub-keeper",
       "script": "",
       "trigger": "manual",
-      "status": "idle",
+      "status": "running",
       "requires_approval": true,
       "openclaw_agent_id": "hub-keeper",
       "last_run": "2026-03-17T13:08:19.106306",
@@ -39,24 +39,6 @@
         "github"
       ],
       "last_log": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/hub-keeper-20260317_130819.log"
-    },
-    {
-      "id": "demo-feedback",
-      "name": "Demo FeedbackBot",
-      "emoji": "🎬",
-      "rank": "Tướng lĩnh",
-      "description": "Demo: đọc feedback MD → Claude Code → chờ duyệt",
-      "workspace": "/home/nathan-ubutu/.openclaw/workspace",
-      "script": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/scripts/demo_agent.sh",
-      "trigger": "manual",
-      "status": "rejected",
-      "requires_approval": true,
-      "last_run": "2026-03-18T11:03:28.152839",
-      "tags": [
-        "demo",
-        "feedback"
-      ],
-      "last_log": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/demo-feedback-20260318_110328.log"
     },
     {
       "id": "health-check",
