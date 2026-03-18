@@ -1168,7 +1168,9 @@ async def general_chat_stream(req: ChatRequest, background_tasks: BackgroundTask
                     await ws.send_text(event)
                 except:
                     dead.add(ws)
-            global_ws_clients.difference_update(dead)
+            for ws in dead:
+                try: global_ws_clients.remove(ws)
+                except: pass
 
         except Exception as e:
             await push_activity(agent_id, f"❌ Lỗi: {str(e)[:80]}", "error")
