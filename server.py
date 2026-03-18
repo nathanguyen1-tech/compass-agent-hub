@@ -24,8 +24,46 @@ LOGS_DIR.mkdir(exist_ok=True)
 
 # ── Startup / Lifespan ───────────────────────────────────────
 
+async def _watch_agent_log(agent_id: str):
+    """Tự động watch /tmp/hub-<agent_id>.log và push mỗi dòng mới lên activity stream."""
+    log_path = Path(f"/tmp/hub-{agent_id}.log")
+    last_pos = 0
+
+    while True:
+        await asyncio.sleep(0.5)
+        try:
+            if not log_path.exists():
+                last_pos = 0
+                continue
+            # Reset nếu file bị tạo lại (agent mới chạy)
+            size = log_path.stat().st_size
+            if size < last_pos:
+                last_pos = 0
+            if size == last_pos:
+                continue
+            with open(log_path) as f:
+                f.seek(last_pos)
+                new_lines = f.readlines()
+                last_pos = f.tell()
+            for line in new_lines:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    msg   = data.get("message", line)
+                    level = data.get("level", "info")
+                except json.JSONDecodeError:
+                    msg   = line
+                    level = "info"
+                await push_activity(agent_id, msg, level)
+        except Exception as e:
+            pass  # Không crash watcher vì lỗi nhỏ
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Reset status stale
     try:
         reg = load_registry()
         changed = 0
@@ -40,6 +78,16 @@ async def lifespan(app: FastAPI):
             print(f"[startup] Reset {changed} agent(s) về 'idle'")
     except Exception as e:
         print(f"[startup] Lỗi reset status: {e}")
+
+    # Khởi động file watcher cho mọi agent
+    try:
+        reg = load_registry()
+        for a in reg["agents"]:
+            asyncio.create_task(_watch_agent_log(a["id"]))
+            print(f"[watcher] Đang watch /tmp/hub-{a['id']}.log")
+    except Exception as e:
+        print(f"[startup] Lỗi khởi động watcher: {e}")
+
     yield
 
 

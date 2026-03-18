@@ -1,79 +1,82 @@
 # AGENT_STANDARD.md — Chuẩn chung cho mọi Agent
 
 > **Bắt buộc:** Mọi agent mới tạo ra đều phải tuân theo chuẩn này.
-> Copy phần liên quan vào `AGENTS.md` của workspace agent đó.
 
 ---
 
-## 1. Báo cáo tiến trình về Hub (BẮT BUỘC)
+## Cơ chế báo cáo tự động
 
-Mọi agent phải POST tiến trình về Hub trong suốt quá trình chạy.
-Dashboard **Activity Stream** phụ thuộc vào điều này để Đại Tướng theo dõi.
+Server **tự động** watch file `/tmp/hub-<agent_id>.log` của từng agent.
+Agent chỉ cần ghi vào file đó — server sẽ tự đẩy lên Activity Stream.
 
-### Cách báo cáo (dùng exec tool):
-
-```bash
-# Script helper — dùng cho script-based agents
-/home/nathan-ubutu/.openclaw/workspace/agent-hub/scripts/hub_report.sh <agent_id> "<message>" <level>
 ```
-
-```bash
-# Hoặc curl trực tiếp — dùng cho chat-based agents (OpenClaw AI agents)
-curl -s -X POST http://localhost:7777/api/agents/<AGENT_ID>/activity \
-  -H "Content-Type: application/json" \
-  -d '{"message": "<nội dung>", "level": "<level>"}'
-```
-
-### Levels:
-| Level | Dùng khi |
-|-------|---------|
-| `info` | Bắt đầu bước mới, thông tin chung |
-| `progress` | Đang thực hiện (đang đọc, đang xử lý...) |
-| `success` | Hoàn thành một bước thành công |
-| `warning` | Cảnh báo, bất thường nhỏ |
-| `error` | Lỗi, thất bại |
-
-### Các mốc BẮT BUỘC phải báo cáo:
-```
-1. Khi bắt đầu chạy         → level: info
-2. Khi bắt đầu từng bước    → level: progress
-3. Khi hoàn thành một bước  → level: success / error
-4. Khi cần approval         → level: warning
-5. Khi kết thúc             → level: success / error
-```
-
-### Ví dụ flow hoàn chỉnh:
-```bash
-hub_report feedback-bot "Bắt đầu xử lý feedback" info
-hub_report feedback-bot "Đang đọc feedback.md..." progress
-hub_report feedback-bot "Tìm thấy 2 mục cần xử lý" info
-hub_report feedback-bot "Đang implement fix #001: sửa lỗi tính tuổi" progress
-hub_report feedback-bot "Fix #001 hoàn thành" success
-hub_report feedback-bot "Đang chạy tests..." progress
-hub_report feedback-bot "Tests pass (12/12)" success
-hub_report feedback-bot "Chờ phê duyệt từ Chủ tướng" warning
+Agent viết vào /tmp/hub-<id>.log
+        ↓  (tự động, 0.5s)
+Server đọc → push Activity Stream
+        ↓  (real-time)
+Dashboard Đại Tướng thấy ngay
 ```
 
 ---
 
-## 2. Cập nhật status trên Hub
+## Dành cho Script-based agents (có file .sh)
 
-Ngoài activity stream, agent cũng nên cập nhật status chính thức:
+Chỉ cần **2 dòng** ở đầu script:
 
 ```bash
-# Cập nhật status của agent
-curl -s -X PATCH http://localhost:7777/api/agents/<AGENT_ID>/status \
-  -H "Content-Type: application/json" \
-  -d '{"status": "running"}'
+export AGENT_ID="ten-agent-id"
+source /home/nathan-ubutu/.openclaw/workspace/agent-hub/scripts/agent_init.sh
 ```
 
-Status hợp lệ: `idle` | `running` | `pending_approval` | `done` | `error`
+**Sau đó tất cả tự động:**
+- `git pull` → tự báo "⬇️ Đang pull..."
+- `git commit` → tự báo "📦 Committed: abc1234"
+- `git push` → tự báo "🚀 Pushed lên GitHub"
+- `pytest` → tự báo "🧪 Đang chạy tests..." + kết quả
+- Script kết thúc → tự báo ✅ hoặc ❌
+
+**Muốn báo thêm thủ công:**
+```bash
+hlog "Đang xử lý file XYZ..." progress
+hlog "Fix #001 hoàn thành" success
+```
 
 ---
 
-## 3. Đăng ký agent mới vào registry.json
+## Dành cho Chat-based agents (OpenClaw AI agents)
 
-Mọi agent mới phải có entry trong `/home/nathan-ubutu/.openclaw/workspace/agent-hub/registry.json`:
+Dùng `exec` tool để ghi vào log file — server tự pick up:
+
+```bash
+# Ghi 1 dòng → server tự đẩy lên stream
+echo '{"message":"Đang đọc feedback.md...","level":"progress"}' >> /tmp/hub-<agent_id>.log
+```
+
+**Các bước bắt buộc phải báo:**
+
+| Thời điểm | Lệnh |
+|-----------|------|
+| Bắt đầu chạy | `echo '{"message":"Bắt đầu","level":"info"}' >> /tmp/hub-<id>.log` |
+| Mỗi bước xử lý | `echo '{"message":"Đang làm X...","level":"progress"}' >> /tmp/hub-<id>.log` |
+| Hoàn thành bước | `echo '{"message":"X xong","level":"success"}' >> /tmp/hub-<id>.log` |
+| Có lỗi | `echo '{"message":"Lỗi: ...","level":"error"}' >> /tmp/hub-<id>.log` |
+| Chờ duyệt | `echo '{"message":"Chờ phê duyệt","level":"warning"}' >> /tmp/hub-<id>.log` |
+
+---
+
+## Levels
+
+| Level | Màu trên stream | Dùng khi |
+|-------|----------------|---------|
+| `info` | trắng | Thông tin chung, bắt đầu |
+| `progress` | xanh dương | Đang thực hiện |
+| `success` | xanh lá (cyan) | Hoàn thành tốt |
+| `warning` | vàng | Cần chú ý, chờ duyệt |
+| `error` | đỏ | Lỗi, thất bại |
+
+---
+
+## Đăng ký agent mới vào registry.json
 
 ```json
 {
@@ -81,7 +84,7 @@ Mọi agent mới phải có entry trong `/home/nathan-ubutu/.openclaw/workspace
   "name": "Tên Hiển Thị",
   "emoji": "🤖",
   "rank": "Tướng lĩnh",
-  "description": "Mô tả ngắn gọn nhiệm vụ của agent",
+  "description": "Mô tả ngắn gọn",
   "workspace": "/home/nathan-ubutu/.openclaw/workspace-<ten-agent>",
   "script": "",
   "trigger": "manual",
@@ -91,39 +94,15 @@ Mọi agent mới phải có entry trong `/home/nathan-ubutu/.openclaw/workspace
 }
 ```
 
----
-
-## 4. Template AGENTS.md cho agent mới
-
-```markdown
-# AGENTS.md — <TênAgent>
-
-## Nhiệm vụ
-<Mô tả rõ nhiệm vụ>
-
-## Hub Reporting (BẮT BUỘC)
-Agent ID: `<agent-id>`
-Báo cáo mọi bước về: http://localhost:7777
-
-Dùng exec tool để báo cáo:
-\`\`\`bash
-curl -s -X POST http://localhost:7777/api/agents/<agent-id>/activity \
-  -H "Content-Type: application/json" \
-  -d '{"message": "<message>", "level": "<level>"}'
-\`\`\`
-
-## Workflow
-1. Báo cáo bắt đầu
-2. [các bước xử lý...]
-3. Báo cáo hoàn thành / lỗi
-```
+Sau khi thêm vào registry.json và **restart server**, watcher sẽ tự động khởi động cho agent mới.
 
 ---
 
-## 5. Checklist khi tạo agent mới
+## Checklist agent mới
 
 - [ ] Tạo workspace tại `~/.openclaw/workspace-<ten-agent>/`
 - [ ] Tạo `AGENTS.md`, `SOUL.md`, `IDENTITY.md`
-- [ ] Thêm vào `registry.json` của Agent Hub
-- [ ] Thêm hub reporting vào mọi bước trong AGENTS.md
-- [ ] Test: chạy agent và xem Activity Stream có cập nhật không
+- [ ] Thêm vào `registry.json` → restart server
+- [ ] Script-based: thêm 2 dòng `source agent_init.sh`
+- [ ] Chat-based: thêm `echo` vào các bước trong AGENTS.md
+- [ ] Test: kiểm tra `/tmp/hub-<id>.log` có data và stream có cập nhật
