@@ -221,6 +221,15 @@
 
     <!-- ── Agent Detail ── -->
     <div id="agentDetail">
+      <!-- Breadcrumb -->
+      <div style="padding:8px 16px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:8px;font-size:12px;flex-shrink:0">
+        <button onclick="showCommandCenter()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:5px">
+          ← 🏯 Dashboard
+        </button>
+        <span style="color:var(--muted)">›</span>
+        <span id="breadcrumbEmoji"></span>
+        <span id="breadcrumbName" style="color:var(--text);font-weight:600"></span>
+      </div>
       <div class="detail-header">
         <span id="detailEmoji" style="font-size:22px"></span>
         <h2 id="detailName"></h2>
@@ -349,6 +358,8 @@ function updateDetail(agent) {
   selectedAgent = agent;
   document.getElementById('detailEmoji').textContent = agent.emoji;
   document.getElementById('detailName').textContent = agent.name;
+  document.getElementById('breadcrumbEmoji').textContent = agent.emoji;
+  document.getElementById('breadcrumbName').textContent = agent.name;
   const badge = document.getElementById('detailBadge');
   const labels = {idle:'Đang chờ', running:'Đang chạy', pending_approval:'Chờ duyệt', done:'Hoàn thành', error:'Lỗi', rejected:'Từ chối', stopped:'Đã dừng'};
   badge.textContent = labels[agent.status] || agent.status;
