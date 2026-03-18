@@ -101,6 +101,89 @@ async def _watch_agent_sessions():
             pass
 
 
+# Map tool name → mô tả human-readable
+TOOL_LABELS = {
+    "exec":          lambda a: f"🖥️ Chạy: {a.get('command','')[:80]}",
+    "Edit":          lambda a: f"✏️ Sửa file: {Path(a.get('file_path') or a.get('path','')).name}",
+    "Write":         lambda a: f"📝 Ghi file: {Path(a.get('file_path') or a.get('path','')).name}",
+    "Read":          lambda a: f"📖 Đọc file: {Path(a.get('file_path') or a.get('path','')).name}",
+    "web_search":    lambda a: f"🔍 Tìm kiếm: {a.get('query','')}",
+    "web_fetch":     lambda a: f"🌐 Fetch: {a.get('url','')}",
+    "memory_search": lambda a: f"🧠 Tìm memory: {a.get('query','')}",
+    "memory_get":    lambda a: f"🧠 Đọc memory: {a.get('path','')}",
+    "browser":       lambda a: f"🌐 Browser: {a.get('action','')} {a.get('url','')}",
+    "sessions_list": lambda a: "📋 Kiểm tra sessions",
+    "sessions_send": lambda a: f"📨 Gửi message",
+}
+
+async def _watch_session_transcript(agent_id: str, oc_id: str):
+    """Watch session JSONL file — tự parse tool calls và push lên activity stream."""
+    sessions_dir = OPENCLAW_AGENTS_DIR / oc_id / "sessions"
+    last_session_file = None
+    last_pos = 0
+
+    while True:
+        await asyncio.sleep(2)
+        try:
+            sessions_json = sessions_dir / "sessions.json"
+            if not sessions_json.exists():
+                continue
+
+            # Lấy session file hiện tại
+            sessions_data = json.loads(sessions_json.read_text())
+            session_file = None
+            for v in sessions_data.values():
+                if isinstance(v, dict) and v.get("sessionFile"):
+                    session_file = Path(v["sessionFile"])
+                    break
+            if not session_file or not session_file.exists():
+                continue
+
+            # Reset nếu session file thay đổi
+            if session_file != last_session_file:
+                last_session_file = session_file
+                last_pos = session_file.stat().st_size  # Chỉ đọc từ đây trở đi (bỏ qua lịch sử)
+
+            size = session_file.stat().st_size
+            if size <= last_pos:
+                continue
+
+            with open(session_file) as f:
+                f.seek(last_pos)
+                new_lines = f.readlines()
+                last_pos = f.tell()
+
+            for line in new_lines:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    msg = entry.get("message", {})
+                    if not isinstance(msg, dict):
+                        continue
+                    if msg.get("role") != "assistant":
+                        continue
+                    for c in msg.get("content", []):
+                        if not isinstance(c, dict) or c.get("type") != "toolCall":
+                            continue
+                        tool_name = c.get("name", "")
+                        args = c.get("arguments", {})
+                        label_fn = TOOL_LABELS.get(tool_name)
+                        if label_fn:
+                            try:
+                                description = label_fn(args)
+                            except Exception:
+                                description = f"🔧 {tool_name}"
+                        else:
+                            description = f"🔧 {tool_name}"
+                        await push_activity(agent_id, description, "progress")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+
 async def _watch_all_logs():
     """Single loop watch /tmp/hub-<agent_id>.log cho MỌI agent trong registry.
     Tự động pick up agent mới mà không cần restart server."""
@@ -176,6 +259,17 @@ async def lifespan(app: FastAPI):
     # Session watcher — detect chat-based agents đang hoạt động
     asyncio.create_task(_watch_agent_sessions())
     print("[watcher] Session watcher khởi động (dynamic)")
+
+    # Transcript watcher — parse tool calls từ session file → hiện lên log
+    try:
+        reg = load_registry()
+        for a in reg["agents"]:
+            oc_id = a.get("openclaw_agent_id")
+            if oc_id:
+                asyncio.create_task(_watch_session_transcript(a["id"], oc_id))
+                print(f"[watcher] Transcript watcher: {a['id']} → {oc_id}")
+    except Exception as e:
+        print(f"[startup] Lỗi transcript watcher: {e}")
 
     yield
 
