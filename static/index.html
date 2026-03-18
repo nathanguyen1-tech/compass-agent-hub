@@ -327,6 +327,13 @@ async function selectAgent(agentId) {
   renderAgentList();
   updateDetail(selectedAgent);
 
+  // Reset về tab Logs, xóa nội dung cũ
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab')[0].classList.add('active');
+  document.getElementById('tabLogs').style.display = 'block';
+  document.getElementById('tabInfo').style.display = 'none';
+  document.getElementById('tabLogs').innerHTML = '<div class="log-empty">Đang tải...</div>';
+
   if (agentWs) agentWs.close();
   agentWs = new WebSocket(`ws://${location.host}/ws/${agentId}`);
   agentWs.onmessage = (e) => {
