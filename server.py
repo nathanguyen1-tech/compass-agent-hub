@@ -857,6 +857,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
+    active_agent_id: str = ""   # openclaw_agent_id đang được giao tiếp trực tiếp
 
 GENERAL_SYSTEM_PROMPT = """Mày là Đại Tướng Nathan-Ubu — Tổng chỉ huy đội quân AI của Chủ tướng.
 
@@ -1066,6 +1067,58 @@ async def general_chat_stream(req: ChatRequest, background_tasks: BackgroundTask
         for a in agents
     )
 
+    # ── Active agent context (đang "nói chuyện" với agent cụ thể) ──
+    # Nếu client đang trong session với một agent → route thẳng tới agent đó
+    active_oc_id = req.active_agent_id.strip()
+    if active_oc_id:
+        active_agent_obj = next(
+            (a for a in agents if a.get("openclaw_agent_id") == active_oc_id), None
+        )
+        if active_agent_obj:
+            # Thoát khỏi session nếu user nói "xong", "thoát", "quay lại", "đại tướng"
+            exit_words = ["xong", "thoát", "quay lại", "back", "đại tướng", "exit", "done"]
+            if any(w in user_msg.lower() for w in exit_words):
+                async def _exit_stream():
+                    yield "data: " + json.dumps({
+                        "type": "delta",
+                        "text": f"✅ Kết thúc phiên với {active_agent_obj['emoji']} **{active_agent_obj['name']}**. Quay lại Đại Tướng."
+                    }) + "\n\n"
+                    yield "data: " + json.dumps({"type": "done", "executed": [], "delegates": [], "exit_agent": True}) + "\n\n"
+                return StreamingResponse(_exit_stream(), media_type="text/event-stream",
+                                         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+            # Route thẳng tới agent đang active — không qua Đại Tướng
+            _oc_bin_direct = __import__('shutil').which("openclaw") or "/home/nathan-ubutu/.npm-global/bin/openclaw"
+            _oc_env_direct = {**os.environ, "PATH": os.environ.get("PATH","") + ":/home/nathan-ubutu/.npm-global/bin:/usr/local/bin"}
+
+            async def _direct_stream():
+                proc = await asyncio.create_subprocess_exec(
+                    _oc_bin_direct, "agent", "--agent", active_oc_id, "--message", user_msg, "--json",
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, env=_oc_env_direct
+                )
+                stdout, _ = await proc.communicate()
+                raw = stdout.decode("utf-8", errors="replace").strip()
+                try:
+                    data = json.loads(raw)
+                    payloads = data.get("result", {}).get("payloads", [])
+                    text = "\n".join(p.get("text","") for p in payloads if p.get("text")) or "⚠️ Không có phản hồi."
+                except:
+                    text = raw[:500] or "⚠️ Lỗi nhận phản hồi."
+
+                chunk_size = 10
+                for i in range(0, len(text), chunk_size):
+                    yield "data: " + json.dumps({"type": "delta", "text": text[i:i+chunk_size]}) + "\n\n"
+                    await asyncio.sleep(0.008)
+
+                await push_activity(active_agent_obj["id"], f"💬 Trả lời Chủ tướng: {text[:80]}", "info")
+                yield "data: " + json.dumps({
+                    "type": "done", "executed": [], "delegates": [],
+                    "keep_agent": active_oc_id   # báo frontend giữ nguyên active agent
+                }) + "\n\n"
+
+            return StreamingResponse(_direct_stream(), media_type="text/event-stream",
+                                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
     # ── Phát hiện agent được nhắm đến ──────────────────────────
     target_agent = None
     msg_lower = user_msg.lower()
@@ -1198,7 +1251,13 @@ async def general_chat_stream(req: ChatRequest, background_tasks: BackgroundTask
 
             yield "data: " + json.dumps({
                 "type": "done", "executed": [], "delegates": [oc_id],
-                "fire_and_monitor": True
+                "fire_and_monitor": True,
+                "activate_agent": {      # frontend set active agent sau khi agent xong
+                    "oc_id":  oc_id,
+                    "name":   name,
+                    "emoji":  emoji,
+                    "hub_id": _target["id"]
+                }
             }) + "\n\n"
 
         else:
