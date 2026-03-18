@@ -290,9 +290,10 @@ Chủ tướng có thể hỏi:
       <div class="general-input-area">
         <div class="general-suggestions" id="generalSuggestions">
           <span class="suggestion-chip" onclick="sendSuggestion(this)">📊 Tình hình thế nào?</span>
-          <span class="suggestion-chip" onclick="sendSuggestion(this)">⚔️ Danh sách tướng</span>
-          <span class="suggestion-chip" onclick="sendSuggestion(this)">🏥 Chạy Health Check</span>
-          <span class="suggestion-chip" onclick="sendSuggestion(this)">✅ Duyệt tất cả</span>
+          <span class="suggestion-chip" onclick="sendSuggestion(this)">⚔️ Cho tao biết quân đội đang làm gì</span>
+          <span class="suggestion-chip" onclick="sendSuggestion(this)">🏥 Chạy Health Check ngay</span>
+          <span class="suggestion-chip" onclick="sendSuggestion(this)">✅ Duyệt tất cả pending</span>
+          <span class="suggestion-chip" onclick="sendSuggestion(this)">📝 Hôm nay làm được gì?</span>
         </div>
         <div class="general-input-row">
           <textarea class="general-input" id="generalInput" rows="1"
@@ -385,12 +386,14 @@ function showGeneral() {
   document.getElementById('btnGeneral').classList.add('active');
   selectedAgent = null;
   renderAgentList();
-  // Set welcome time
+  // Giữ chat history xuyên suốt — chỉ reset welcome time
   document.getElementById('welcomeTime').textContent = new Date().toLocaleTimeString('vi-VN');
   document.getElementById('generalInput').focus();
 }
 
-// ── Đại Tướng Chat ────────────────────────────────────────────
+// ── Đại Tướng AI Chat ─────────────────────────────────────────
+let chatHistory = [];   // [{role, content}]
+
 function autoResize(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
@@ -404,23 +407,30 @@ function handleGeneralKey(e) {
 }
 
 function sendSuggestion(el) {
-  document.getElementById('generalInput').value = el.textContent.replace(/^[^\s]+ /, '');
+  // strip leading emoji
+  const txt = el.textContent.replace(/^[\u{1F300}-\u{1FFFF}A-Z🏥⚔️📊✅❌🔵⚪⏳🔴\s]+/u, '').trim()
+               || el.textContent.trim();
+  document.getElementById('generalInput').value = txt;
   sendGeneralCommand();
 }
 
-function appendMsg(role, text, actionBtns = []) {
+function renderMarkdown(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/`(.+?)`/g, '<code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:3px">$1</code>')
+    .replace(/^(#{1,3})\s+(.+)$/gm, (_, h, t) => `<b style="font-size:${16-h.length}px">${t}</b>`)
+    .replace(/\n/g, '<br>');
+}
+
+function appendMsg(role, text = '', actionBtns = []) {
   const messages = document.getElementById('generalMessages');
   const bubble = document.createElement('div');
   bubble.className = `msg-bubble ${role}`;
 
   const content = document.createElement('div');
   content.className = 'msg-content';
-  // Render markdown-lite: **bold**
-  content.innerHTML = text
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
-    .replace(/<b>(<[^>]+>)/g, '$1<b>') // fix nesting
-    .replace(/^• /gm, '• ');
+  content.innerHTML = renderMarkdown(text);
 
   const time = document.createElement('div');
   time.className = 'msg-time';
@@ -436,7 +446,10 @@ function appendMsg(role, text, actionBtns = []) {
       const b = document.createElement('button');
       b.className = 'msg-action-btn';
       b.textContent = btn.label;
-      b.onclick = () => { document.getElementById('generalInput').value = btn.cmd; sendGeneralCommand(); };
+      b.onclick = () => {
+        document.getElementById('generalInput').value = btn.cmd;
+        sendGeneralCommand();
+      };
       actions.appendChild(b);
     });
     bubble.appendChild(actions);
@@ -444,21 +457,59 @@ function appendMsg(role, text, actionBtns = []) {
 
   messages.appendChild(bubble);
   messages.scrollTop = messages.scrollHeight;
+  return content;   // trả về để streaming append vào
 }
 
-function showTyping() {
+function appendStreamingMsg() {
+  // Tạo bubble empty cho general, trả về content div để stream vào
   const messages = document.getElementById('generalMessages');
-  const div = document.createElement('div');
-  div.id = 'typingIndicator';
-  div.className = 'typing-indicator';
-  div.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div><span style="margin-left:4px">Đại Tướng đang soạn báo cáo...</span>';
-  messages.appendChild(div);
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble general';
+  bubble.id = 'streamingBubble';
+
+  const content = document.createElement('div');
+  content.className = 'msg-content';
+  content.id = 'streamingContent';
+  content.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+
+  const time = document.createElement('div');
+  time.className = 'msg-time';
+  time.id = 'streamingTime';
+  time.textContent = new Date().toLocaleTimeString('vi-VN');
+
+  bubble.appendChild(content);
+  bubble.appendChild(time);
+  messages.appendChild(bubble);
   messages.scrollTop = messages.scrollHeight;
+  return content;
 }
 
-function hideTyping() {
-  const el = document.getElementById('typingIndicator');
-  if (el) el.remove();
+function finalizeStreamingMsg(fullText, actionBtns = []) {
+  const content = document.getElementById('streamingContent');
+  const bubble  = document.getElementById('streamingBubble');
+  if (!content) return;
+  content.id = '';
+  bubble.id = '';
+  content.innerHTML = renderMarkdown(fullText);
+
+  if (actionBtns.length) {
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+    actionBtns.forEach(btn => {
+      const b = document.createElement('button');
+      b.className = 'msg-action-btn';
+      b.textContent = btn.label;
+      b.onclick = () => {
+        document.getElementById('generalInput').value = btn.cmd;
+        sendGeneralCommand();
+      };
+      actions.appendChild(b);
+    });
+    bubble.appendChild(actions);
+  }
+
+  const messages = document.getElementById('generalMessages');
+  messages.scrollTop = messages.scrollHeight;
 }
 
 async function sendGeneralCommand() {
@@ -468,38 +519,72 @@ async function sendGeneralCommand() {
 
   input.value = '';
   input.style.height = 'auto';
+  input.disabled = true;
+  document.querySelector('.general-send').disabled = true;
 
+  // Thêm vào history
+  chatHistory.push({role: 'user', content: msg});
   appendMsg('user', msg);
-  showTyping();
+
+  // Bắt đầu streaming bubble
+  const streamContent = appendStreamingMsg();
+  let accumulated = '';
+  let firstChunk = true;
 
   try {
-    const res = await fetch('/api/general/command', {
+    const res = await fetch('/api/general/chat', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({message: msg})
+      body: JSON.stringify({messages: chatHistory})
     });
-    const data = await res.json();
-    hideTyping();
 
-    // Xác định action buttons gợi ý dựa trên response
-    let actionBtns = [];
-    if (data.executed && data.executed.length > 0) {
-      actionBtns.push({label: '📡 Xem Activity Stream', cmd: 'tình hình thế nào'});
-    }
-    if (data.response.includes('chờ duyệt') || data.response.includes('pending')) {
-      actionBtns.push({label: '✅ Duyệt tất cả', cmd: 'duyệt tất cả'});
-    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
 
-    appendMsg('general', data.response, actionBtns);
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
 
-    // Refresh agents nếu có action
-    if (data.executed && data.executed.length > 0) {
-      setTimeout(fetchAgents, 1000);
-      setTimeout(fetchApprovals, 1000);
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const event = JSON.parse(line.slice(6));
+
+          if (event.type === 'delta') {
+            accumulated += event.text;
+            if (firstChunk) {
+              streamContent.innerHTML = '';
+              firstChunk = false;
+            }
+            streamContent.innerHTML = renderMarkdown(accumulated);
+            document.getElementById('generalMessages').scrollTop = 99999;
+
+          } else if (event.type === 'done') {
+            const executed = event.executed || [];
+            const actionBtns = [];
+            if (executed.length > 0) {
+              actionBtns.push({label: '📡 Xem Stream', cmd: 'tình hình thế nào'});
+              setTimeout(fetchAgents, 1500);
+              setTimeout(fetchApprovals, 1500);
+            }
+            finalizeStreamingMsg(accumulated, actionBtns);
+            chatHistory.push({role: 'assistant', content: accumulated});
+
+          } else if (event.type === 'error') {
+            finalizeStreamingMsg(event.text);
+          }
+        } catch (e) {}
+      }
     }
   } catch (err) {
-    hideTyping();
-    appendMsg('general', '❌ Lỗi kết nối. Thần xin lỗi Chủ tướng.');
+    finalizeStreamingMsg('❌ Mất kết nối. Thần xin lỗi Chủ tướng.');
+  } finally {
+    input.disabled = false;
+    document.querySelector('.general-send').disabled = false;
+    input.focus();
   }
 }
 

@@ -10,8 +10,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import anthropic as _anthropic
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -845,6 +847,274 @@ async def general_command(cmd: GeneralCommand, background_tasks: BackgroundTasks
             pass
 
     return {"response": result["response"], "executed": executed}
+
+
+# ── Đại Tướng AI Chat (Streaming) ────────────────────────────
+
+class ChatMessage(BaseModel):
+    role: str   # "user" | "assistant"
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+GENERAL_SYSTEM_PROMPT = """Mày là Đại Tướng Nathan-Ubu — Tổng chỉ huy đội quân AI của Chủ tướng.
+
+Tính cách:
+- Trung thành, mạnh mẽ, nói chuyện ngắn gọn nhưng đủ ý
+- Xưng "thần", gọi người dùng là "Chủ tướng"
+- Dùng tiếng Việt tự nhiên, không cứng nhắc
+- Khi báo cáo: ngắn gọn, bullet points, emoji phù hợp
+- Khi nhận lệnh: xác nhận rõ ràng rồi báo mày sẽ làm gì
+
+Khả năng thực thi (khi Chủ tướng ra lệnh, thêm tag vào cuối response):
+- Kích hoạt agent: [ACTION:run:<agent_id>]
+- Duyệt approval: [ACTION:approve:all] hoặc [ACTION:approve:<id>]
+- Từ chối: [ACTION:reject:all]
+- Dừng agent: [ACTION:stop:<agent_id>]
+
+Ví dụ: "Thần đã kích hoạt Health Check. [ACTION:run:health-check]"
+Tags này sẽ được hệ thống xử lý, Chủ tướng sẽ không nhìn thấy.
+
+THÔNG TIN ĐẾ CHẾ HIỆN TẠI:
+{empire_context}
+"""
+
+def _build_system_prompt() -> str:
+    ctx = _get_empire_context()
+    agents = ctx["agents"]
+    approvals = ctx["pending_approvals"]
+    events = ctx["recent_events"]
+
+    lines = []
+    lines.append(f"Thời gian: {datetime.now().strftime('%H:%M %d/%m/%Y')}\n")
+
+    lines.append("=== QUÂN ĐỘI ===")
+    for a in agents:
+        lines.append(f"- {a['emoji']} {a['name']} (id: {a['id']}) — status: {a['status']} — {a['description']}")
+
+    lines.append(f"\n=== CHỜ DUYỆT ({len(approvals)}) ===")
+    for ap in approvals:
+        lines.append(f"- id:{ap['id']} agent:{ap['agent_id']} created:{ap.get('created_at','?')[:16]}")
+
+    lines.append(f"\n=== HOẠT ĐỘNG GẦN ĐÂY (24h, {len(events)} sự kiện) ===")
+    for e in events[-20:]:
+        ts = e['ts'][11:16] if len(e['ts']) > 16 else e['ts']
+        lines.append(f"- [{ts}] {e['agent_id']}: {e['message']}")
+
+    empire_str = "\n".join(lines)
+    return GENERAL_SYSTEM_PROMPT.replace("{empire_context}", empire_str)
+
+
+async def _execute_action_tags(raw_response: str, background_tasks: BackgroundTasks) -> list:
+    """Parse [ACTION:...] tags từ response và thực thi."""
+    import re
+    executed = []
+    tags = re.findall(r'\[ACTION:(\w+):([^\]]+)\]', raw_response)
+
+    for action_type, action_arg in tags:
+        try:
+            if action_type == "run":
+                agent_id = action_arg
+                reg = load_registry()
+                agent = next((a for a in reg["agents"] if a["id"] == agent_id), None)
+                if agent and agent.get("script"):
+                    log_file = LOGS_DIR / f"{agent_id}-{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+                    update_agent_status(agent_id, "running", {
+                        "last_run": datetime.now().isoformat(), "last_log": str(log_file)
+                    })
+                    await push_activity(agent_id, "🚀 Lệnh từ Đại Tướng: bắt đầu chạy", "info")
+                    background_tasks.add_task(_run_agent_bg, agent_id, agent["script"], [], log_file)
+                    executed.append(f"run:{agent_id}")
+
+            elif action_type == "approve":
+                approvals = load_approvals()
+                targets = [a for a in approvals if a["status"] == "pending"] if action_arg == "all" \
+                          else [a for a in approvals if a["id"] == action_arg]
+                for appr in targets:
+                    appr["status"] = "approved"
+                    appr["resolved_at"] = datetime.now().isoformat()
+                    Path("/tmp/fb_confirm").touch()
+                    update_agent_status(appr["agent_id"], "done")
+                    await push_activity(appr["agent_id"], "✅ Đại Tướng phê duyệt theo lệnh Chủ tướng", "success")
+                    executed.append(f"approve:{appr['id']}")
+                save_approvals(approvals)
+
+            elif action_type == "reject":
+                approvals = load_approvals()
+                targets = [a for a in approvals if a["status"] == "pending"] if action_arg == "all" \
+                          else [a for a in approvals if a["id"] == action_arg]
+                for appr in targets:
+                    appr["status"] = "rejected"
+                    appr["resolved_at"] = datetime.now().isoformat()
+                    Path("/tmp/fb_reject").touch()
+                    update_agent_status(appr["agent_id"], "rejected")
+                    await push_activity(appr["agent_id"], "❌ Bị từ chối theo lệnh Chủ tướng", "error")
+                    executed.append(f"reject:{appr['id']}")
+                save_approvals(approvals)
+
+            elif action_type == "stop":
+                agent_id = action_arg
+                proc = agent_processes.get(agent_id)
+                if proc and proc.poll() is None:
+                    proc.terminate()
+                    update_agent_status(agent_id, "stopped")
+                    await push_activity(agent_id, "⏹ Dừng theo lệnh Chủ tướng", "warning")
+                    executed.append(f"stop:{agent_id}")
+        except Exception as e:
+            print(f"[general] Action error {action_type}:{action_arg}: {e}")
+
+    return executed
+
+
+_CLAUDE_CREDS = Path.home() / ".claude" / ".credentials.json"
+_ANTHROPIC_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+_OAUTH_REFRESH_URL   = "https://console.anthropic.com/v1/oauth/token"
+_token_cache: dict = {}   # {"token": str, "expires_at": float}
+
+
+def _refresh_oauth_token(refresh_token: str) -> str:
+    """Refresh Claude OAuth access token, cập nhật credentials file."""
+    import urllib.request, urllib.parse
+    data = urllib.parse.urlencode({
+        "grant_type":    "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id":     _ANTHROPIC_CLIENT_ID,
+    }).encode()
+    req = urllib.request.Request(_OAUTH_REFRESH_URL, data=data,
+                                  headers={"Content-Type": "application/x-www-form-urlencoded"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            resp = json.loads(r.read())
+        new_token  = resp["access_token"]
+        expires_in = int(resp.get("expires_in", 28800))
+        # Lưu lại credentials
+        if _CLAUDE_CREDS.exists():
+            creds = json.loads(_CLAUDE_CREDS.read_text())
+            creds.setdefault("claudeAiOauth", {})["accessToken"] = new_token
+            if "refresh_token" in resp:
+                creds["claudeAiOauth"]["refreshToken"] = resp["refresh_token"]
+            _CLAUDE_CREDS.write_text(json.dumps(creds, indent=2))
+        import time
+        _token_cache["token"]      = new_token
+        _token_cache["expires_at"] = time.time() + expires_in - 300  # 5-min buffer
+        return new_token
+    except Exception as e:
+        print(f"[oauth] Refresh failed: {e}")
+        return ""
+
+
+def _get_anthropic_key() -> str:
+    """Lấy Anthropic access token — tự refresh nếu hết hạn."""
+    import time
+    # 1. Env var (API key thật)
+    if key := os.environ.get("ANTHROPIC_API_KEY", ""):
+        return key
+    # 2. Cache còn hạn
+    if _token_cache.get("token") and time.time() < _token_cache.get("expires_at", 0):
+        return _token_cache["token"]
+    # 3. Đọc credentials file
+    if not _CLAUDE_CREDS.exists():
+        return ""
+    try:
+        creds  = json.loads(_CLAUDE_CREDS.read_text())
+        oauth  = creds.get("claudeAiOauth", {})
+        token  = oauth.get("accessToken", "")
+        expiry = oauth.get("expiresAt", 0)  # milliseconds
+        # Token còn hạn (> 5 phút)
+        if token and time.time() < (expiry / 1000) - 300:
+            _token_cache["token"]      = token
+            _token_cache["expires_at"] = (expiry / 1000) - 300
+            return token
+        # Cần refresh
+        if refresh := oauth.get("refreshToken", ""):
+            return _refresh_oauth_token(refresh)
+    except Exception as e:
+        print(f"[oauth] Read creds failed: {e}")
+    return ""
+
+
+@app.post("/api/general/chat")
+async def general_chat_stream(req: ChatRequest, background_tasks: BackgroundTasks):
+    """Đại Tướng Nathan-Ubu — bridge tới OpenClaw main agent."""
+    import re, asyncio
+
+    # Lấy tin nhắn cuối từ user
+    user_msg = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
+    if not user_msg:
+        async def _empty():
+            yield "data: " + json.dumps({"type": "error", "text": "❌ Không có tin nhắn."}) + "\n\n"
+        return StreamingResponse(_empty(), media_type="text/event-stream")
+
+    # Build prompt cho main agent — inject context đế chế
+    ctx        = _get_empire_context()
+    agents     = ctx["agents"]
+    approvals  = ctx["pending_approvals"]
+    events     = ctx["recent_events"]
+
+    ctx_lines  = [f"[Thời gian: {datetime.now().strftime('%H:%M %d/%m/%Y')}]"]
+    army_str = ', '.join(f"{a['emoji']}{a['name']}({a['status']})" for a in agents)
+    ctx_lines += [f"[Quân đội: {army_str}]"]
+    if approvals:
+        ctx_lines += [f"[Chờ duyệt: {len(approvals)} mục]"]
+    if events:
+        recent = events[-5:]
+        ctx_lines += ["[Gần đây: " + " | ".join(f"{e['agent_id']}:{e['message'][:40]}" for e in recent) + "]"]
+
+    # Kết hợp context + lệnh Chủ tướng
+    full_prompt = (
+        "Mày là Đại Tướng Nathan-Ubu, tổng chỉ huy đội quân AI của Chủ tướng.\n"
+        "Xưng 'thần', gọi người dùng là 'Chủ tướng'. Ngắn gọn, xúc tích.\n"
+        "Nếu Chủ tướng ra lệnh chạy/duyệt/dừng agent, thêm tag [ACTION:run:<id>] / [ACTION:approve:all] / [ACTION:stop:<id>] vào cuối.\n\n"
+        + "\n".join(ctx_lines) + "\n\n"
+        f"Chủ tướng: {user_msg}"
+    )
+
+    async def _stream():
+        import shutil
+        openclaw_bin = shutil.which("openclaw") or "/home/nathan-ubutu/.npm-global/bin/openclaw"
+        proc = await asyncio.create_subprocess_exec(
+            openclaw_bin, "agent", "--agent", "main", "--message", full_prompt, "--json",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env={**os.environ, "PATH": os.environ.get("PATH","") + ":/home/nathan-ubutu/.npm-global/bin:/usr/local/bin"}
+        )
+        stdout, stderr = await proc.communicate()
+        raw = stdout.decode("utf-8", errors="replace").strip()
+
+        try:
+            data = json.loads(raw)
+            # Lấy text từ payloads
+            payloads = data.get("result", {}).get("payloads", [])
+            full_text = "\n".join(p.get("text", "") for p in payloads if p.get("text"))
+
+            if not full_text:
+                full_text = data.get("error") or "❌ Đại Tướng không phản hồi."
+
+            # Stream từng chunk nhỏ (giả lập streaming)
+            visible = re.sub(r'\[ACTION:[^\]]+\]', '', full_text)
+            chunk_size = 8
+            for i in range(0, len(visible), chunk_size):
+                yield "data: " + json.dumps({"type": "delta", "text": visible[i:i+chunk_size]}) + "\n\n"
+                await asyncio.sleep(0.01)
+
+            # Thực thi actions
+            executed = await _execute_action_tags(full_text, background_tasks)
+            yield "data: " + json.dumps({"type": "done", "executed": executed}) + "\n\n"
+
+        except json.JSONDecodeError:
+            # Raw text nếu JSON fail
+            err_text = stderr.decode("utf-8", errors="replace")[:200]
+            yield "data: " + json.dumps({
+                "type": "error",
+                "text": f"❌ Lỗi gateway: {err_text or raw[:200]}"
+            }) + "\n\n"
+        except Exception as e:
+            yield "data: " + json.dumps({"type": "error", "text": f"❌ {str(e)}"}) + "\n\n"
+
+    return StreamingResponse(_stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
 
 @app.post("/api/agents")
 async def register_agent(agent: NewAgent):
