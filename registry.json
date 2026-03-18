@@ -11,6 +11,7 @@
       "trigger": "manual",
       "status": "idle",
       "requires_approval": true,
+      "openclaw_agent_id": "compass-feedback",
       "last_run": "2026-03-18T10:19:33.557618",
       "tags": [
         "medical",
@@ -28,8 +29,9 @@
       "workspace": "/home/nathan-ubutu/.openclaw/workspace-hub-keeper",
       "script": "",
       "trigger": "manual",
-      "status": "idle",
+      "status": "running",
       "requires_approval": true,
+      "openclaw_agent_id": "hub-keeper",
       "last_run": "2026-03-17T13:08:19.106306",
       "tags": [
         "devops",

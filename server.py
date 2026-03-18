@@ -24,6 +24,82 @@ LOGS_DIR.mkdir(exist_ok=True)
 
 # ── Startup / Lifespan ───────────────────────────────────────
 
+OPENCLAW_AGENTS_DIR = Path.home() / ".openclaw" / "agents"
+# agent_id → last known updatedAt (ms)
+_session_last_updated: Dict[str, int] = {}
+# agent_id → whether session was "active" last check
+_session_was_active: Dict[str, bool] = {}
+# Ngưỡng: < N giây → coi là đang hoạt động
+SESSION_ACTIVE_THRESHOLD_SEC = 180   # 3 phút — vừa phản hồi xong
+
+
+async def _watch_agent_sessions():
+    """Tự động detect khi chat-based agent đang hoạt động.
+    Dùng 2 tín hiệu:
+      1. File .lock tồn tại  → đang xử lý ngay lúc này (real-time)
+      2. updatedAt < 3 phút  → vừa hoạt động gần đây
+    """
+    while True:
+        await asyncio.sleep(5)
+        try:
+            reg = load_registry()
+            now_ms = int(time.time() * 1000)
+            for a in reg["agents"]:
+                oc_id = a.get("openclaw_agent_id")
+                if not oc_id:
+                    continue
+                agent_id = a["id"]
+                sessions_dir = OPENCLAW_AGENTS_DIR / oc_id / "sessions"
+                sessions_file = sessions_dir / "sessions.json"
+                if not sessions_file.exists():
+                    continue
+                try:
+                    sessions_data = json.loads(sessions_file.read_text())
+                    latest_updated = max(
+                        (v.get("updatedAt", 0) for v in sessions_data.values() if isinstance(v, dict)),
+                        default=0
+                    )
+                    age_sec = (now_ms - latest_updated) / 1000
+
+                    # Kiểm tra file .lock — đang xử lý ngay lúc này
+                    lock_files = list(sessions_dir.glob("*.lock"))
+                    is_processing = len(lock_files) > 0
+
+                    # Đang chạy nếu: có lock file HOẶC vừa cập nhật < 3 phút
+                    is_active = is_processing or (age_sec < SESSION_ACTIVE_THRESHOLD_SEC)
+
+                    last_updated = _session_last_updated.get(agent_id, 0)
+                    was_active   = _session_was_active.get(agent_id, False)
+
+                    if is_active:
+                        if not was_active:
+                            # Vừa bắt đầu hoạt động
+                            _session_was_active[agent_id] = True
+                            _session_last_updated[agent_id] = latest_updated
+                            current = next((x for x in reg["agents"] if x["id"] == agent_id), {})
+                            if current.get("status") not in ("pending_approval", "done"):
+                                update_agent_status(agent_id, "running")
+                            status_msg = "🔄 Đang xử lý..." if is_processing else "💬 Vừa hoạt động"
+                            await push_activity(agent_id, status_msg, "progress" if is_processing else "info")
+                        elif is_processing and latest_updated > last_updated:
+                            # Có response mới trong khi đang chạy
+                            _session_last_updated[agent_id] = latest_updated
+                            await push_activity(agent_id, "🔄 Đang xử lý...", "progress")
+                    else:
+                        if was_active:
+                            # Vừa ngừng hoạt động
+                            _session_was_active[agent_id] = False
+                            current = next((x for x in reg["agents"] if x["id"] == agent_id), {})
+                            if current.get("status") == "running":
+                                update_agent_status(agent_id, "idle")
+                                await push_activity(agent_id, "⚪ Agent đã nghỉ", "info")
+
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+
 async def _watch_agent_log(agent_id: str):
     """Tự động watch /tmp/hub-<agent_id>.log và push mỗi dòng mới lên activity stream."""
     log_path = Path(f"/tmp/hub-{agent_id}.log")
@@ -87,6 +163,10 @@ async def lifespan(app: FastAPI):
             print(f"[watcher] Đang watch /tmp/hub-{a['id']}.log")
     except Exception as e:
         print(f"[startup] Lỗi khởi động watcher: {e}")
+
+    # Khởi động session watcher (detect chat-based agents)
+    asyncio.create_task(_watch_agent_sessions())
+    print("[watcher] Session watcher khởi động")
 
     yield
 
