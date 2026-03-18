@@ -15,31 +15,36 @@
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; }
 
   /* Header */
-  header { background: linear-gradient(135deg, #0d2137 0%, #0a1628 100%); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
-  header h1 { font-size: 18px; font-weight: 700; }
+  header { background: linear-gradient(135deg, #0d2137 0%, #0a1628 100%); border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+  header h1 { font-size: 17px; font-weight: 700; white-space: nowrap; }
   header h1 span { color: var(--blue); }
-  .header-meta { margin-left: auto; display: flex; gap: 16px; align-items: center; font-size: 13px; color: var(--muted); }
-  .rank-badge { background: linear-gradient(135deg, #f5a623, #e8920a); color: #000; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .chain { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+  .chain-item { background: #1a2a3a; border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
+  .chain-item.gold { border-color: #f5a623; color: #f5a623; }
+  .chain-sep { color: var(--muted); }
+  .header-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .btn-cmd { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .btn-cmd:hover, .btn-cmd.active { background: #0d2137; border-color: var(--blue); color: var(--blue); }
+  #clock { font-size: 12px; color: var(--muted); }
 
   /* Layout */
-  .main { display: grid; grid-template-columns: 320px 1fr; flex: 1; overflow: hidden; }
+  .main { display: grid; grid-template-columns: 300px 1fr; flex: 1; overflow: hidden; }
 
   /* Sidebar */
   aside { border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
-  .aside-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .aside-header h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-  .btn-add { background: var(--blue); border: none; color: white; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
-  .btn-add:hover { background: #0052a3; }
+  .aside-header { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .aside-header h2 { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .btn-add { background: var(--blue); border: none; color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
 
-  .agents-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
-  .agent-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: all .2s; position: relative; }
+  .agents-list { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 5px; }
+  .agent-card { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; cursor: pointer; transition: all .15s; position: relative; }
   .agent-card:hover { border-color: var(--blue); background: var(--surface2); }
   .agent-card.active { border-color: var(--blue); background: #0d2137; }
-  .agent-card .agent-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-  .agent-emoji { font-size: 24px; }
-  .agent-info h3 { font-size: 14px; font-weight: 600; }
-  .agent-info .rank { font-size: 11px; color: var(--muted); }
-  .status-dot { position: absolute; top: 12px; right: 12px; width: 10px; height: 10px; border-radius: 50%; }
+  .agent-card .agent-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .agent-emoji { font-size: 22px; flex-shrink: 0; }
+  .agent-info h3 { font-size: 13px; font-weight: 600; }
+  .agent-info .rank { font-size: 10px; color: var(--muted); }
+  .status-dot { position: absolute; top: 10px; right: 10px; width: 9px; height: 9px; border-radius: 50%; }
   .status-idle { background: var(--muted); }
   .status-running { background: var(--blue); animation: pulse 1.5s infinite; }
   .status-pending_approval { background: var(--yellow); animation: pulse 1s infinite; }
@@ -47,125 +52,183 @@
   .status-error { background: var(--red); }
   .status-rejected { background: var(--red); opacity: .6; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-  .agent-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
-  .agent-actions { display: flex; gap: 6px; margin-top: 10px; }
-  .btn-run { background: var(--green); border: none; color: white; padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
+  .agent-desc { font-size: 11px; color: var(--muted); line-height: 1.4; margin-bottom: 6px; }
+  .agent-actions { display: flex; gap: 5px; align-items: center; }
+  .btn-run { background: var(--green); border: none; color: white; padding: 3px 10px; border-radius: 5px; font-size: 11px; cursor: pointer; font-weight: 600; }
   .btn-run:hover { background: #238636; }
-  .btn-stop { background: var(--red); border: none; color: white; padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; }
-  .btn-stop:hover { background: #b91c1c; }
-  .btn-log { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .btn-stop { background: var(--red); border: none; color: white; padding: 3px 10px; border-radius: 5px; font-size: 11px; cursor: pointer; }
+  .btn-log-sm { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 3px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; }
+  .btn-log-sm:hover { color: var(--text); }
+  .last-run-sm { font-size: 10px; color: var(--muted); margin-left: auto; }
+
+  /* ── Command Center ──────────────────────── */
+  #commandCenter { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+  /* Stats row */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .stat-box { padding: 14px 16px; text-align: center; border-right: 1px solid var(--border); }
+  .stat-box:last-child { border-right: none; }
+  .stat-num { font-size: 26px; font-weight: 700; line-height: 1; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* Center split */
+  .cmd-body { display: grid; grid-template-columns: 1fr 1fr; flex: 1; overflow: hidden; }
 
   /* Approval panel */
-  .approval-section { border-top: 1px solid var(--border); padding: 10px 8px; }
-  .approval-section h3 { font-size: 12px; color: var(--yellow); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; padding: 0 8px 8px; }
-  .approval-card { background: #2a1f00; border: 1px solid #5a3e00; border-radius: 8px; padding: 10px; margin-bottom: 6px; }
-  .approval-card .a-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
-  .approval-card .a-time { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-  .approval-btns { display: flex; gap: 6px; }
-  .btn-approve { background: var(--green); border: none; color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
-  .btn-reject { background: var(--red); border: none; color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .cmd-panel { display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); }
+  .cmd-panel-header { padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; flex-shrink: 0; }
+  .cmd-panel-header.yellow { color: var(--yellow); }
+  .cmd-panel-header.cyan { color: var(--cyan); }
+  .cmd-panel-body { flex: 1; overflow-y: auto; padding: 10px 12px; }
 
-  /* Content area */
-  .content { display: flex; flex-direction: column; overflow: hidden; }
-  .content-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
-  .content-header h2 { font-size: 16px; font-weight: 600; }
-  .status-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  .approval-card { background: #1a1400; border: 1px solid #4a3200; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .approval-card .ac-agent { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .approval-card .ac-time { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .approval-btns { display: flex; gap: 6px; }
+  .btn-approve { background: var(--green); border: none; color: white; padding: 4px 12px; border-radius: 5px; font-size: 12px; cursor: pointer; font-weight: 600; }
+  .btn-reject { background: var(--red); border: none; color: white; padding: 4px 12px; border-radius: 5px; font-size: 12px; cursor: pointer; }
+  .approval-empty { color: var(--muted); text-align: center; padding: 40px 20px; font-size: 13px; }
+
+  /* Activity stream */
+  .activity-line { display: flex; gap: 8px; align-items: flex-start; padding: 5px 0; border-bottom: 1px solid #1a1f26; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; }
+  .activity-line:last-child { border-bottom: none; }
+  .act-ts { color: #3d4a5a; white-space: nowrap; flex-shrink: 0; padding-top: 1px; }
+  .act-agent { white-space: nowrap; flex-shrink: 0; }
+  .act-msg { color: var(--text); line-height: 1.4; }
+  .act-info .act-msg { color: var(--text); }
+  .act-success .act-msg { color: var(--cyan); }
+  .act-error .act-msg { color: var(--red); }
+  .act-warning .act-msg { color: var(--yellow); }
+  .act-progress .act-msg { color: #63b3ed; }
+  .act-empty { color: var(--muted); text-align: center; padding: 40px 20px; font-size: 13px; }
+
+  /* ── Agent Detail ─────────────────────────── */
+  #agentDetail { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .detail-header { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .detail-header h2 { font-size: 15px; font-weight: 600; }
+  .status-badge { padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
   .badge-idle { background: var(--surface2); color: var(--muted); }
   .badge-running { background: #0d2137; color: var(--blue); border: 1px solid var(--blue); }
   .badge-pending_approval { background: #2a1f00; color: var(--yellow); border: 1px solid var(--yellow); }
   .badge-done { background: #0d2f1a; color: var(--green); }
   .badge-error { background: #2a0d0d; color: var(--red); }
+  .badge-rejected { background: #1f0d0d; color: #a04040; }
 
-  /* Tabs */
-  .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 20px; }
-  .tab { padding: 10px 16px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 18px; flex-shrink: 0; }
+  .tab { padding: 8px 14px; font-size: 12px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); }
   .tab.active { color: var(--text); border-bottom-color: var(--blue); }
 
-  /* Log terminal */
-  .terminal { flex: 1; overflow-y: auto; padding: 16px 20px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12.5px; line-height: 1.7; background: #0a0e14; }
-  .terminal .log-line { white-space: pre-wrap; word-break: break-all; }
-  .log-ts { color: #4a5568; margin-right: 8px; }
-  .log-icon-tool { color: #63b3ed; }
-  .log-icon-ok { color: var(--green); }
-  .log-icon-err { color: var(--red); }
-  .log-icon-info { color: var(--yellow); }
-  .log-icon-ai { color: var(--purple); }
-  .log-empty { color: var(--muted); text-align: center; padding: 60px; font-size: 14px; }
+  .terminal { flex: 1; overflow-y: auto; padding: 14px 18px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; line-height: 1.7; background: #0a0e14; }
+  .log-line { white-space: pre-wrap; word-break: break-all; }
+  .log-ts { color: #3d4a5a; margin-right: 6px; }
+  .log-ok { color: var(--cyan); }
+  .log-err { color: var(--red); }
+  .log-tool { color: #63b3ed; }
+  .log-ai { color: var(--purple); }
+  .log-warn { color: var(--yellow); }
+  .log-empty { color: var(--muted); text-align: center; padding: 60px; font-size: 13px; }
 
-  /* Stats */
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 16px 20px; }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: center; }
-  .stat-card .stat-num { font-size: 28px; font-weight: 700; }
-  .stat-card .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
-
-  /* Empty state */
-  .empty-state { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: var(--muted); }
-  .empty-state .big-emoji { font-size: 48px; }
+  .info-grid { padding: 16px 18px; overflow-y: auto; flex: 1; }
+  .info-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+  .info-box-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; font-weight: 600; }
+  .info-row { display: flex; gap: 8px; padding: 4px 0; font-size: 12px; }
+  .info-key { color: var(--muted); width: 130px; flex-shrink: 0; }
+  .info-val { color: var(--text); font-family: monospace; word-break: break-all; }
+  .tag-chip { background: var(--surface2); border: 1px solid var(--border); padding: 2px 9px; border-radius: 20px; font-size: 11px; display: inline-block; margin: 2px; }
 
   /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
 </head>
 <body>
 
 <header>
-  <div style="font-size:24px">🏯</div>
-  <div>
+  <div style="font-size:22px;flex-shrink:0">🏯</div>
+  <div style="flex-shrink:0">
     <h1>Bản Chỉ <span>Huy</span></h1>
-    <div style="font-size:11px;color:var(--muted)">Agent Command Center</div>
+    <div style="font-size:10px;color:var(--muted)">Agent Command Center</div>
   </div>
-  <div style="display:flex;gap:8px;align-items:center;margin-left:16px">
-    <div style="background:#1a2a3a;border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px">
-      👑 Chủ tướng: <b>Bạn</b>
-    </div>
-    <div style="font-size:16px">→</div>
-    <div style="background:#1a2a3a;border:1px solid #f5a623;border-radius:20px;padding:4px 12px;font-size:12px;color:#f5a623">
-      ⚔️ Đại tướng: <b>Nathan-Ubu</b>
-    </div>
-    <div style="font-size:16px">→</div>
-    <div style="background:#1a2a3a;border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px">
-      🤖 Tướng lĩnh: <span id="agentCount">...</span>
-    </div>
+  <div class="chain">
+    <div class="chain-item">👑 Chủ tướng: <b>Bạn</b></div>
+    <div class="chain-sep">→</div>
+    <div class="chain-item gold">⚔️ Đại tướng: <b>Nathan-Ubu</b></div>
+    <div class="chain-sep">→</div>
+    <div class="chain-item">🤖 Tướng lĩnh: <span id="agentCount">...</span></div>
   </div>
-  <div class="header-meta">
-    <span id="clock"></span>
+  <div class="header-right">
+    <button class="btn-cmd active" id="btnCmdCenter" onclick="showCommandCenter()">🏯 Command Center</button>
+    <div id="clock"></div>
   </div>
 </header>
 
 <div class="main">
-  <!-- Sidebar: Agent List -->
+  <!-- Sidebar -->
   <aside>
     <div class="aside-header">
       <h2>⚔️ Tướng lĩnh</h2>
       <button class="btn-add" onclick="showAddAgent()">+ Thêm</button>
     </div>
     <div class="agents-list" id="agentsList"></div>
-
-    <!-- Approval Queue -->
-    <div class="approval-section" id="approvalSection" style="display:none">
-      <h3>⏳ Chờ phê duyệt</h3>
-      <div id="approvalList"></div>
-    </div>
   </aside>
 
   <!-- Main Content -->
-  <div class="content">
-    <div id="emptyState" class="empty-state">
-      <div class="big-emoji">🏯</div>
-      <div style="font-size:18px;font-weight:600;color:var(--text)">Chọn một Agent để xem</div>
-      <div>Click vào agent bên trái để xem log và điều khiển</div>
+  <div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+
+    <!-- ── Command Center ── -->
+    <div id="commandCenter">
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-num" id="statTotal" style="color:var(--text)">—</div>
+          <div class="stat-label">Tổng agents</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statRunning" style="color:var(--blue)">—</div>
+          <div class="stat-label">🔵 Đang chạy</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statPending" style="color:var(--yellow)">—</div>
+          <div class="stat-label">⏳ Chờ duyệt</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statIdle" style="color:var(--muted)">—</div>
+          <div class="stat-label">⚪ Đang nghỉ</div>
+        </div>
+      </div>
+
+      <!-- Body: Approvals + Activity Stream -->
+      <div class="cmd-body">
+        <!-- Approvals -->
+        <div class="cmd-panel">
+          <div class="cmd-panel-header yellow">⏳ Hàng chờ phê duyệt</div>
+          <div class="cmd-panel-body" id="cmdApprovalList">
+            <div class="approval-empty">✅ Không có gì cần duyệt</div>
+          </div>
+        </div>
+
+        <!-- Activity Stream -->
+        <div class="cmd-panel" style="border-right:none">
+          <div class="cmd-panel-header cyan">
+            📡 Activity Stream
+            <span id="streamDot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-left:6px;vertical-align:middle"></span>
+          </div>
+          <div class="cmd-panel-body" id="activityStream">
+            <div class="act-empty">Chưa có hoạt động nào...</div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div id="agentDetail" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-      <div class="content-header">
-        <span id="detailEmoji" style="font-size:24px"></span>
+    <!-- ── Agent Detail ── -->
+    <div id="agentDetail">
+      <div class="detail-header">
+        <span id="detailEmoji" style="font-size:22px"></span>
         <h2 id="detailName"></h2>
         <span id="detailBadge" class="status-badge"></span>
-        <div style="margin-left:auto;display:flex;gap:8px">
+        <div style="margin-left:auto;display:flex;gap:7px">
           <button class="btn-run" id="btnRun" onclick="runAgent()">▶ Chạy</button>
           <button class="btn-stop" id="btnStop" onclick="stopAgent()" style="display:none">⏹ Dừng</button>
-          <button class="btn-log" onclick="refreshLogs()">↻ Refresh</button>
+          <button class="btn-log-sm" onclick="refreshLogs()">↻ Refresh</button>
         </div>
       </div>
 
@@ -174,37 +237,64 @@
         <div class="tab" onclick="switchTab('info', this)">ℹ️ Thông tin</div>
       </div>
 
-      <div id="tabLogs" class="terminal" id="terminal">
+      <div id="tabLogs" class="terminal">
         <div class="log-empty">Chưa có log. Nhấn ▶ Chạy để bắt đầu.</div>
       </div>
-
-      <div id="tabInfo" style="display:none;padding:20px;overflow-y:auto;flex:1">
+      <div id="tabInfo" class="info-grid" style="display:none">
         <div id="agentInfoContent"></div>
       </div>
     </div>
-  </div>
-</div>
+
+  </div><!-- end main right -->
+</div><!-- end .main -->
 
 <script>
 let selectedAgent = null;
-let ws = null;
+let agentWs = null;
+let activityWs = null;
 let allAgents = [];
+let view = 'cmd'; // 'cmd' | 'agent'
 
-// Clock
+// ── Clock ─────────────────────────────────────────────────────
 setInterval(() => {
   document.getElementById('clock').textContent = new Date().toLocaleTimeString('vi-VN');
 }, 1000);
 
-// ── Fetch agents ─────────────────────────────────────────────
+// ── View switching ────────────────────────────────────────────
+function showCommandCenter() {
+  view = 'cmd';
+  document.getElementById('commandCenter').style.display = 'flex';
+  document.getElementById('agentDetail').style.display = 'none';
+  document.getElementById('btnCmdCenter').classList.add('active');
+  selectedAgent = null;
+  renderAgentList();
+}
+
+function showAgentDetail() {
+  view = 'agent';
+  document.getElementById('commandCenter').style.display = 'none';
+  document.getElementById('agentDetail').style.display = 'flex';
+  document.getElementById('btnCmdCenter').classList.remove('active');
+}
+
+// ── Fetch agents ──────────────────────────────────────────────
 async function fetchAgents() {
   const res = await fetch('/api/agents');
   allAgents = await res.json();
   document.getElementById('agentCount').textContent = allAgents.length;
+  updateStats();
   renderAgentList();
-  if (selectedAgent) {
+  if (selectedAgent && view === 'agent') {
     const updated = allAgents.find(a => a.id === selectedAgent.id);
     if (updated) updateDetail(updated);
   }
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = allAgents.length;
+  document.getElementById('statRunning').textContent = allAgents.filter(a => a.status === 'running').length;
+  document.getElementById('statPending').textContent = allAgents.filter(a => a.status === 'pending_approval').length;
+  document.getElementById('statIdle').textContent = allAgents.filter(a => a.status === 'idle').length;
 }
 
 function renderAgentList() {
@@ -221,145 +311,134 @@ function renderAgentList() {
       </div>
       <div class="agent-desc">${a.description}</div>
       <div class="agent-actions">
-        <button class="btn-run" onclick="event.stopPropagation(); quickRun('${a.id}')">▶</button>
+        <button class="btn-run" onclick="event.stopPropagation(); quickRun('${a.id}')">▶ Run</button>
         ${a.status === 'running' ? `<button class="btn-stop" onclick="event.stopPropagation(); quickStop('${a.id}')">⏹</button>` : ''}
-        <span style="font-size:11px;color:var(--muted);margin-left:auto;align-self:center">
-          ${a.last_run ? new Date(a.last_run).toLocaleTimeString('vi-VN') : 'Chưa chạy'}
-        </span>
+        <button class="btn-log-sm" onclick="event.stopPropagation(); selectAgent('${a.id}')">📋 Log</button>
+        <span class="last-run-sm">${a.last_run ? new Date(a.last_run).toLocaleTimeString('vi-VN') : '—'}</span>
       </div>
     </div>
   `).join('');
 }
 
-// ── Select agent ─────────────────────────────────────────────
+// ── Select agent ──────────────────────────────────────────────
 async function selectAgent(agentId) {
   selectedAgent = allAgents.find(a => a.id === agentId);
-  document.getElementById('emptyState').style.display = 'none';
-  const detail = document.getElementById('agentDetail');
-  detail.style.display = 'flex';
-
-  updateDetail(selectedAgent);
+  showAgentDetail();
   renderAgentList();
+  updateDetail(selectedAgent);
 
-  // Connect WebSocket
-  if (ws) ws.close();
-  ws = new WebSocket(`ws://${location.host}/ws/${agentId}`);
-  ws.onmessage = (e) => {
+  if (agentWs) agentWs.close();
+  agentWs = new WebSocket(`ws://${location.host}/ws/${agentId}`);
+  agentWs.onmessage = (e) => {
     const data = JSON.parse(e.data);
     appendLog(data);
     if (data.type === 'done' || data.type === 'started') fetchAgents();
   };
 
-  // Load existing logs
   await refreshLogs();
 }
 
 function updateDetail(agent) {
+  selectedAgent = agent;
   document.getElementById('detailEmoji').textContent = agent.emoji;
   document.getElementById('detailName').textContent = agent.name;
   const badge = document.getElementById('detailBadge');
-  const labels = {idle:'Đang chờ', running:'Đang chạy', pending_approval:'Chờ duyệt', done:'Hoàn thành', error:'Lỗi', rejected:'Từ chối'};
+  const labels = {idle:'Đang chờ', running:'Đang chạy', pending_approval:'Chờ duyệt', done:'Hoàn thành', error:'Lỗi', rejected:'Từ chối', stopped:'Đã dừng'};
   badge.textContent = labels[agent.status] || agent.status;
   badge.className = `status-badge badge-${agent.status}`;
 
-  const runBtn = document.getElementById('btnRun');
-  const stopBtn = document.getElementById('btnStop');
-  if (agent.status === 'running') {
-    runBtn.style.display = 'none';
-    stopBtn.style.display = '';
-  } else {
-    runBtn.style.display = '';
-    stopBtn.style.display = 'none';
-  }
+  document.getElementById('btnRun').style.display = agent.status === 'running' ? 'none' : '';
+  document.getElementById('btnStop').style.display = agent.status === 'running' ? '' : 'none';
 
-  // Info tab
   document.getElementById('agentInfoContent').innerHTML = `
-    <div style="display:grid;gap:12px">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">THÔNG TIN</div>
-        <table style="width:100%;font-size:13px;border-collapse:collapse">
-          <tr><td style="color:var(--muted);padding:4px 0;width:140px">ID:</td><td>${agent.id}</td></tr>
-          <tr><td style="color:var(--muted);padding:4px 0">Cấp bậc:</td><td>${agent.rank}</td></tr>
-          <tr><td style="color:var(--muted);padding:4px 0">Trigger:</td><td>${agent.trigger}</td></tr>
-          <tr><td style="color:var(--muted);padding:4px 0">Cần duyệt:</td><td>${agent.requires_approval ? '✅ Có' : '❌ Không'}</td></tr>
-          <tr><td style="color:var(--muted);padding:4px 0">Script:</td><td style="font-family:monospace;font-size:11px">${agent.script}</td></tr>
-          <tr><td style="color:var(--muted);padding:4px 0">Workspace:</td><td style="font-family:monospace;font-size:11px">${agent.workspace}</td></tr>
-          <tr><td style="color:var(--muted);padding:4px 0">Lần cuối chạy:</td><td>${agent.last_run ? new Date(agent.last_run).toLocaleString('vi-VN') : 'Chưa'}</td></tr>
-        </table>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">TAGS</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          ${(agent.tags||[]).map(t => `<span style="background:var(--surface2);border:1px solid var(--border);padding:3px 10px;border-radius:20px;font-size:12px">#${t}</span>`).join('')}
-        </div>
-      </div>
+    <div class="info-box">
+      <div class="info-box-title">Thông tin agent</div>
+      ${[
+        ['ID', agent.id],
+        ['Cấp bậc', agent.rank],
+        ['Trigger', agent.trigger],
+        ['Cần duyệt', agent.requires_approval ? '✅ Có' : '❌ Không'],
+        ['Script', agent.script || '(chat-based — không có script)'],
+        ['Workspace', agent.workspace],
+        ['Lần cuối chạy', agent.last_run ? new Date(agent.last_run).toLocaleString('vi-VN') : 'Chưa chạy'],
+      ].map(([k,v]) => `<div class="info-row"><div class="info-key">${k}:</div><div class="info-val">${v}</div></div>`).join('')}
+    </div>
+    <div class="info-box">
+      <div class="info-box-title">Tags</div>
+      <div>${(agent.tags||[]).map(t => `<span class="tag-chip">#${t}</span>`).join('') || '<span style="color:var(--muted);font-size:12px">Không có tags</span>'}</div>
     </div>
   `;
 }
 
-// ── Logs ─────────────────────────────────────────────────────
-function colorLine(line) {
-  if (line.includes('✅') || line.includes('[✓]') || line.includes('pass')) return 'log-icon-ok';
-  if (line.includes('❌') || line.includes('[✗]') || line.includes('error') || line.includes('FAIL')) return 'log-icon-err';
-  if (line.includes('📖') || line.includes('🔧') || line.includes('⚙️') || line.includes('🔍')) return 'log-icon-tool';
-  if (line.includes('💬') || line.includes('🤖')) return 'log-icon-ai';
-  if (line.includes('[⚠]') || line.includes('⏳') || line.includes('warn')) return 'log-icon-info';
+// ── Logs ──────────────────────────────────────────────────────
+function logClass(line) {
+  if (/✅|pass|\[✓\]/.test(line)) return 'log-ok';
+  if (/❌|error|Error|FAIL|\[✗\]/.test(line)) return 'log-err';
+  if (/📖|🔧|⚙️|🔍|🛠/.test(line)) return 'log-tool';
+  if (/💬|🤖/.test(line)) return 'log-ai';
+  if (/⚠️|⏳|warn|\[⚠\]/.test(line)) return 'log-warn';
   return '';
 }
 
 function appendLog(data) {
   const terminal = document.getElementById('tabLogs');
-  const line = data.line || (data.type === 'started' ? `\n🚀 Agent bắt đầu: ${data.cmd}` :
-    data.type === 'done' ? `\n${data.rc === 0 ? '✅' : '❌'} Hoàn thành (exit: ${data.rc})` :
+  const line = data.line || (
+    data.type === 'started' ? `🚀 Agent bắt đầu: ${data.cmd}` :
+    data.type === 'done' ? `${data.rc === 0 ? '✅' : '❌'} Hoàn thành (exit: ${data.rc})` :
     data.type === 'approved' ? '✅ Đã phê duyệt — commit + push...' :
-    data.type === 'rejected' ? '❌ Từ chối — không commit.' : null);
+    data.type === 'rejected' ? '❌ Từ chối — không commit.' : null
+  );
   if (!line) return;
 
-  const cls = colorLine(line);
+  // Remove empty state
+  const empty = terminal.querySelector('.log-empty');
+  if (empty) empty.remove();
+
+  const cls = logClass(line);
   const div = document.createElement('div');
   div.className = 'log-line';
-  div.innerHTML = `<span class="log-ts">${new Date().toLocaleTimeString('vi-VN')}</span><span class="${cls}">${escHtml(line)}</span>`;
+  div.innerHTML = `<span class="log-ts">${new Date().toLocaleTimeString('vi-VN')}</span><span class="${cls}">${esc(line)}</span>`;
   terminal.appendChild(div);
   terminal.scrollTop = terminal.scrollHeight;
 }
 
-function escHtml(s) {
+function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 async function refreshLogs() {
   if (!selectedAgent) return;
-  const res = await fetch(`/api/agents/${selectedAgent.id}/logs?lines=200`);
+  const res = await fetch(`/api/agents/${selectedAgent.id}/logs?lines=300`);
   const data = await res.json();
   const terminal = document.getElementById('tabLogs');
-  if (data.lines.length === 0) {
+  if (!data.lines.length) {
     terminal.innerHTML = '<div class="log-empty">Chưa có log. Nhấn ▶ Chạy để bắt đầu.</div>';
     return;
   }
   terminal.innerHTML = data.lines.map(l => {
-    const cls = colorLine(l);
-    return `<div class="log-line"><span class="${cls}">${escHtml(l)}</span></div>`;
+    const cls = logClass(l);
+    return `<div class="log-line"><span class="${cls}">${esc(l)}</span></div>`;
   }).join('');
   terminal.scrollTop = terminal.scrollHeight;
 }
 
-// ── Actions ──────────────────────────────────────────────────
-async function runAgent() {
-  if (!selectedAgent) return;
-  await quickRun(selectedAgent.id);
-}
+// ── Actions ───────────────────────────────────────────────────
+async function runAgent() { if (selectedAgent) await quickRun(selectedAgent.id); }
+async function stopAgent() { if (selectedAgent) await quickStop(selectedAgent.id); }
 
 async function quickRun(agentId) {
-  await fetch(`/api/agents/${agentId}/run`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({args:[]})});
+  const res = await fetch(`/api/agents/${agentId}/run`, {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({args:[]})
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    alert('⚠️ ' + (err.detail || 'Không thể chạy agent'));
+    return;
+  }
   setTimeout(fetchAgents, 500);
   if (selectedAgent?.id === agentId) {
     document.getElementById('tabLogs').innerHTML = '';
   }
-}
-
-async function stopAgent() {
-  if (!selectedAgent) return;
-  await quickStop(selectedAgent.id);
 }
 
 async function quickStop(agentId) {
@@ -372,17 +451,21 @@ async function fetchApprovals() {
   const res = await fetch('/api/approvals');
   const approvals = await res.json();
   const pending = approvals.filter(a => a.status === 'pending');
-  const section = document.getElementById('approvalSection');
-  const list = document.getElementById('approvalList');
+  renderApprovals(pending);
+}
 
-  if (pending.length === 0) { section.style.display = 'none'; return; }
-  section.style.display = 'block';
-  list.innerHTML = pending.map(a => {
+function renderApprovals(pending) {
+  const el = document.getElementById('cmdApprovalList');
+  if (!pending.length) {
+    el.innerHTML = '<div class="approval-empty">✅ Không có gì cần duyệt</div>';
+    return;
+  }
+  el.innerHTML = pending.map(a => {
     const agent = allAgents.find(ag => ag.id === a.agent_id) || {};
     return `
       <div class="approval-card">
-        <div class="a-title">${agent.emoji || '🤖'} ${agent.name || a.agent_id}</div>
-        <div class="a-time">${new Date(a.created_at).toLocaleString('vi-VN')}</div>
+        <div class="ac-agent">${agent.emoji || '🤖'} ${agent.name || a.agent_id}</div>
+        <div class="ac-time">📅 ${new Date(a.created_at).toLocaleString('vi-VN')}</div>
         <div class="approval-btns">
           <button class="btn-approve" onclick="handleApproval('${a.id}','approve')">✅ Duyệt</button>
           <button class="btn-reject" onclick="handleApproval('${a.id}','reject')">❌ Từ chối</button>
@@ -393,9 +476,59 @@ async function fetchApprovals() {
 }
 
 async function handleApproval(id, action) {
-  await fetch(`/api/approvals/${id}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action})});
+  await fetch(`/api/approvals/${id}`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action})
+  });
   fetchApprovals();
   fetchAgents();
+}
+
+// ── Activity Stream ───────────────────────────────────────────
+function connectActivityStream() {
+  const dot = document.getElementById('streamDot');
+  activityWs = new WebSocket(`ws://${location.host}/ws/activity/stream`);
+
+  activityWs.onopen = () => {
+    dot.style.background = 'var(--cyan)';
+    dot.style.animation = 'pulse 2s infinite';
+  };
+
+  activityWs.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.type === 'activity') appendActivity(data.event);
+  };
+
+  activityWs.onclose = () => {
+    dot.style.background = 'var(--red)';
+    dot.style.animation = '';
+    setTimeout(connectActivityStream, 3000); // reconnect
+  };
+}
+
+function appendActivity(event) {
+  const stream = document.getElementById('activityStream');
+  const empty = stream.querySelector('.act-empty');
+  if (empty) empty.remove();
+
+  const ts = new Date(event.ts).toLocaleTimeString('vi-VN');
+  const div = document.createElement('div');
+  div.className = `activity-line act-${event.level}`;
+  div.innerHTML = `
+    <span class="act-ts">${ts}</span>
+    <span class="act-agent">${event.agent_emoji}</span>
+    <span class="act-msg">${esc(event.message)}</span>
+  `;
+  stream.appendChild(div);
+  stream.scrollTop = stream.scrollHeight;
+}
+
+async function loadActivityHistory() {
+  const res = await fetch('/api/activity?limit=80');
+  const data = await res.json();
+  if (!data.events.length) return;
+  const stream = document.getElementById('activityStream');
+  stream.innerHTML = '';
+  data.events.forEach(appendActivity);
 }
 
 // ── Tabs ──────────────────────────────────────────────────────
@@ -413,6 +546,8 @@ function showAddAgent() {
 // ── Init ──────────────────────────────────────────────────────
 fetchAgents();
 fetchApprovals();
+loadActivityHistory();
+connectActivityStream();
 setInterval(fetchAgents, 3000);
 setInterval(fetchApprovals, 5000);
 </script>
