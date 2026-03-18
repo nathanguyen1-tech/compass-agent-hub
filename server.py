@@ -20,6 +20,7 @@ BASE = Path(__file__).parent
 REGISTRY_FILE = BASE / "registry.json"
 LOGS_DIR = BASE / "logs"
 APPROVALS_FILE = BASE / "approvals.json"
+ACTIVITY_FILE = BASE / "activity.jsonl"   # Persistent activity log
 LOGS_DIR.mkdir(exist_ok=True)
 
 # ── Startup / Lifespan ───────────────────────────────────────
@@ -165,6 +166,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[startup] Lỗi reset status: {e}")
 
+    # Load activity log từ disk (tồn tại qua restart)
+    _load_activity_from_disk()
+
     # Một loop duy nhất watch log files của TẤT CẢ agent (kể cả agent mới thêm sau)
     asyncio.create_task(_watch_all_logs())
     print("[watcher] Log watcher khởi động (dynamic — tự pick up agent mới)")
@@ -183,7 +187,34 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 agent_processes: Dict[str, subprocess.Popen] = {}
 ws_clients: Dict[str, List[WebSocket]] = {}        # agent_id → websockets
 global_ws_clients: List[WebSocket] = []             # command center clients
-activity_log: deque = deque(maxlen=200)             # global activity feed
+activity_log: deque = deque(maxlen=500)             # global activity feed (in-memory)
+
+def _load_activity_from_disk():
+    """Load activity log từ file khi server khởi động."""
+    if not ACTIVITY_FILE.exists():
+        return
+    try:
+        lines = ACTIVITY_FILE.read_text().strip().splitlines()
+        for line in lines[-500:]:   # chỉ load 500 dòng gần nhất
+            try:
+                activity_log.append(json.loads(line))
+            except Exception:
+                pass
+        print(f"[startup] Loaded {len(activity_log)} activity events từ disk")
+    except Exception as e:
+        print(f"[startup] Lỗi load activity: {e}")
+
+def _save_activity_to_disk(event: dict):
+    """Append một event mới vào file."""
+    try:
+        with open(ACTIVITY_FILE, "a") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+        # Giới hạn file 2000 dòng
+        lines = ACTIVITY_FILE.read_text().splitlines()
+        if len(lines) > 2000:
+            ACTIVITY_FILE.write_text("\n".join(lines[-2000:]) + "\n")
+    except Exception:
+        pass
 
 # ── Helpers ──────────────────────────────────────────────────
 
@@ -238,6 +269,7 @@ async def push_activity(agent_id: str, message: str, level: str = "info"):
         "ts": datetime.now().isoformat()
     }
     activity_log.append(event)
+    _save_activity_to_disk(event)   # Persist xuống disk
 
     dead = []
     for ws in global_ws_clients:
