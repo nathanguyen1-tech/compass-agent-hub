@@ -116,11 +116,42 @@ TOOL_LABELS = {
     "sessions_send": lambda a: f"📨 Gửi message",
 }
 
+def _parse_tool_calls_from_lines(lines: list) -> list:
+    """Parse tool calls từ danh sách JSONL lines, trả về list (ts, tool_name, description)."""
+    results = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+            msg = entry.get("message", {})
+            if not isinstance(msg, dict) or msg.get("role") != "assistant":
+                continue
+            ts = entry.get("timestamp") or datetime.now().isoformat()
+            for c in msg.get("content", []):
+                if not isinstance(c, dict) or c.get("type") != "toolCall":
+                    continue
+                tool_name = c.get("name", "")
+                args = c.get("arguments", {})
+                label_fn = TOOL_LABELS.get(tool_name)
+                try:
+                    description = label_fn(args) if label_fn else f"🔧 {tool_name}"
+                except Exception:
+                    description = f"🔧 {tool_name}"
+                results.append((ts, tool_name, description))
+        except Exception:
+            pass
+    return results
+
+
 async def _watch_session_transcript(agent_id: str, oc_id: str):
-    """Watch session JSONL file — tự parse tool calls và push lên activity stream."""
+    """Watch session JSONL file — tự parse tool calls và push lên activity stream.
+    Khi khởi động: load 30 tool calls gần nhất để có lịch sử ngay."""
     sessions_dir = OPENCLAW_AGENTS_DIR / oc_id / "sessions"
     last_session_file = None
     last_pos = 0
+    bootstrapped = False
 
     while True:
         await asyncio.sleep(2)
@@ -129,7 +160,6 @@ async def _watch_session_transcript(agent_id: str, oc_id: str):
             if not sessions_json.exists():
                 continue
 
-            # Lấy session file hiện tại
             sessions_data = json.loads(sessions_json.read_text())
             session_file = None
             for v in sessions_data.values():
@@ -139,10 +169,40 @@ async def _watch_session_transcript(agent_id: str, oc_id: str):
             if not session_file or not session_file.exists():
                 continue
 
-            # Reset nếu session file thay đổi
             if session_file != last_session_file:
                 last_session_file = session_file
-                last_pos = session_file.stat().st_size  # Chỉ đọc từ đây trở đi (bỏ qua lịch sử)
+                bootstrapped = False
+
+            if not bootstrapped:
+                bootstrapped = True
+                # Load 30 tool calls gần nhất từ lịch sử
+                try:
+                    all_lines = session_file.read_text().splitlines()
+                    recent_calls = _parse_tool_calls_from_lines(all_lines)[-30:]
+                    for (ts, tool_name, description) in recent_calls:
+                        # Thêm trực tiếp vào activity_log (không broadcast WebSocket — tránh spam)
+                        reg = load_registry()
+                        agent = next((a for a in reg["agents"] if a["id"] == agent_id), None)
+                        emoji = agent.get("emoji", "🤖") if agent else "🤖"
+                        name  = agent.get("name", agent_id) if agent else agent_id
+                        event = {
+                            "id": str(uuid.uuid4())[:8],
+                            "agent_id": agent_id,
+                            "agent_name": name,
+                            "agent_emoji": emoji,
+                            "message": description,
+                            "level": "progress",
+                            "ts": ts if isinstance(ts, str) else datetime.fromtimestamp(ts/1000).isoformat()
+                        }
+                        # Chỉ thêm nếu chưa có trong activity_log (tránh duplicate)
+                        existing_msgs = {e["message"] for e in activity_log}
+                        if description not in existing_msgs:
+                            activity_log.append(event)
+                    last_pos = session_file.stat().st_size
+                    print(f"[transcript] {agent_id}: loaded {len(recent_calls)} recent tool calls")
+                except Exception as e:
+                    last_pos = session_file.stat().st_size
+                continue
 
             size = session_file.stat().st_size
             if size <= last_pos:
@@ -153,33 +213,9 @@ async def _watch_session_transcript(agent_id: str, oc_id: str):
                 new_lines = f.readlines()
                 last_pos = f.tell()
 
-            for line in new_lines:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                    msg = entry.get("message", {})
-                    if not isinstance(msg, dict):
-                        continue
-                    if msg.get("role") != "assistant":
-                        continue
-                    for c in msg.get("content", []):
-                        if not isinstance(c, dict) or c.get("type") != "toolCall":
-                            continue
-                        tool_name = c.get("name", "")
-                        args = c.get("arguments", {})
-                        label_fn = TOOL_LABELS.get(tool_name)
-                        if label_fn:
-                            try:
-                                description = label_fn(args)
-                            except Exception:
-                                description = f"🔧 {tool_name}"
-                        else:
-                            description = f"🔧 {tool_name}"
-                        await push_activity(agent_id, description, "progress")
-                except Exception:
-                    pass
+            for (ts, tool_name, description) in _parse_tool_calls_from_lines(new_lines):
+                await push_activity(agent_id, description, "progress")
+
         except Exception:
             pass
 
