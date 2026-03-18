@@ -40,7 +40,7 @@ fi
 
 # ── 2. Kiểm tra server local ──────────────────────────────────
 hlog "🌐 Kiểm tra server local..." progress
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://localhost:8000/health" 2>/dev/null || echo "000")
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://localhost:8001/health" 2>/dev/null || echo "000")
 if [[ "$HTTP_CODE" == "200" ]]; then
   check "Server local" "ok" "HTTP $HTTP_CODE — đang chạy"
 else

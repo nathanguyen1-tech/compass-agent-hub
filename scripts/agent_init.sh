@@ -25,10 +25,8 @@ hlog() {
   local msg="$1"
   local level="${2:-info}"
   # Ghi JSON line vào log file — server sẽ tự đọc và push lên stream
-  printf '{"message":%s,"level":"%s"}\n' \
-    "$(echo -n "$msg" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" \
-    "$level" \
-    >> "$HUB_LOG"
+  python3 -c "import json,sys; print(json.dumps({'message':sys.argv[1],'level':sys.argv[2]}, ensure_ascii=False))" \
+    "$msg" "$level" >> "$HUB_LOG"
 }
 
 # Báo bắt đầu
