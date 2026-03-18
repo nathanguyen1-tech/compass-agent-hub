@@ -571,6 +571,18 @@ async function sendGeneralCommand() {
               setTimeout(fetchApprovals, 1500);
             }
             finalizeStreamingMsg(accumulated, actionBtns);
+
+            // Fire & Monitor: hiện indicator đang chờ kết quả
+            if (event.fire_and_monitor) {
+              const msgs = document.getElementById('generalMessages');
+              const ind = document.createElement('div');
+              ind.id = 'monitoringIndicator';
+              ind.className = 'typing-indicator';
+              ind.style.cssText = 'padding:8px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-top:4px;width:fit-content;';
+              ind.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div><span style="margin-left:8px;font-size:12px;color:var(--muted)">Đang chờ tướng lĩnh báo cáo...</span>';
+              msgs.appendChild(ind);
+              msgs.scrollTop = msgs.scrollHeight;
+            }
             chatHistory.push({role: 'assistant', content: accumulated});
 
           } else if (event.type === 'error') {
@@ -834,6 +846,13 @@ function connectActivityStream() {
 
   activityWs.onmessage = (e) => {
     const data = JSON.parse(e.data);
+
+    // ── Agent báo cáo về Đại Tướng chat ─────────────────────
+    if (data.type === 'agent_reply') {
+      handleAgentReply(data);
+      return;
+    }
+
     if (data.type === 'activity') {
       appendActivity(data.event);
       // Nếu đang xem agent này trong detail view → cũng cập nhật Live Log
@@ -851,6 +870,50 @@ function connectActivityStream() {
       }
     }
   };
+
+  // ── Handler: nhận agent_reply, hiện bubble trong Đại Tướng chat ──
+  function handleAgentReply(evt) {
+    // Badge notification nếu không đang ở tab Đại Tướng
+    const btn = document.getElementById('btnGeneral');
+    if (view !== 'general') {
+      btn.innerHTML = '⚔️ Đại Tướng <span style="background:#ef4444;border-radius:50%;padding:1px 5px;font-size:10px;color:white">1</span>';
+    }
+
+    const msgs = document.getElementById('generalMessages');
+    if (!msgs) return;
+
+    // Remove "đang theo dõi" indicator nếu có
+    const monitoring = document.getElementById('monitoringIndicator');
+    if (monitoring) monitoring.remove();
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble general';
+    bubble.style.animation = 'slideIn .3s ease';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'font-size:11px;color:var(--cyan);margin-bottom:5px;font-weight:600;';
+    header.textContent = `${evt.emoji} ${evt.name} báo cáo:`;
+
+    const content = document.createElement('div');
+    content.className = 'msg-content';
+    content.innerHTML = renderMarkdown(evt.message);
+
+    const timeEl = document.createElement('div');
+    timeEl.className = 'msg-time';
+    timeEl.textContent = new Date().toLocaleTimeString('vi-VN');
+
+    bubble.appendChild(header);
+    bubble.appendChild(content);
+    bubble.appendChild(timeEl);
+    msgs.appendChild(bubble);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    // Thêm vào chatHistory
+    chatHistory.push({role: 'assistant', content: `[${evt.name} báo cáo]: ${evt.message}`});
+
+    // Reset badge
+    btn.textContent = '⚔️ Đại Tướng';
+  }
 
   activityWs.onclose = () => {
     dot.style.background = 'var(--red)';

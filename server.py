@@ -1061,71 +1061,150 @@ async def general_chat_stream(req: ChatRequest, background_tasks: BackgroundTask
         recent = events[-5:]
         ctx_lines += ["[Gần đây: " + " | ".join(f"{e['agent_id']}:{e['message'][:40]}" for e in recent) + "]"]
 
-    # Kết hợp context + lệnh Chủ tướng
+    army_detail = "\n".join(
+        f"  - {a['emoji']} {a['name']} (id={a['id']}, status={a['status']})"
+        for a in agents
+    )
+
+    # ── Phát hiện agent được nhắm đến ──────────────────────────
+    # Tìm xem user có nhắc đến agent nào không
+    target_agent = None
+    msg_lower = user_msg.lower()
+    for a in agents:
+        oc_id = a.get("openclaw_agent_id", "")
+        if not oc_id:
+            continue
+        # Match theo tên, id, hoặc nickname
+        keywords = [a["name"].lower(), a["id"].lower(), oc_id.lower()]
+        if a["name"].lower() == "hubkeeper":
+            keywords += ["hub keeper", "hub-keeper", "hubkeeper"]
+        if a["name"].lower() == "feedbackbot":
+            keywords += ["feedback bot", "feedbackbot", "feedback-bot"]
+        if any(k in msg_lower for k in keywords):
+            target_agent = a
+            break
+
     full_prompt = (
-        "Mày là Đại Tướng Nathan-Ubu, tổng chỉ huy đội quân AI của Chủ tướng.\n"
-        "Xưng 'thần', gọi người dùng là 'Chủ tướng'. Ngắn gọn, xúc tích.\n"
-        "Nếu Chủ tướng ra lệnh chạy/duyệt/dừng agent, thêm tag [ACTION:run:<id>] / [ACTION:approve:all] / [ACTION:stop:<id>] vào cuối.\n\n"
-        + "\n".join(ctx_lines) + "\n\n"
+        "Mày là Đại Tướng Nathan-Ubu, tổng chỉ huy đội quân AI phục vụ Chủ tướng.\n"
+        "Xưng 'thần', gọi người dùng là 'Chủ tướng'. Trả lời ngắn gọn, xúc tích.\n\n"
+        "=== ĐẾ CHẾ ===\n"
+        f"{chr(10).join(ctx_lines)}\n\n"
+        "=== QUÂN ĐỘI ===\n"
+        f"{army_detail}\n\n"
         f"Chủ tướng: {user_msg}"
     )
 
-    async def _stream():
-        import shutil
-        openclaw_bin = shutil.which("openclaw") or "/home/nathan-ubutu/.npm-global/bin/openclaw"
-        proc = await asyncio.create_subprocess_exec(
-            openclaw_bin, "agent", "--agent", "main", "--message", full_prompt, "--json",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env={**os.environ, "PATH": os.environ.get("PATH","") + ":/home/nathan-ubutu/.npm-global/bin:/usr/local/bin"}
-        )
-        stdout, stderr = await proc.communicate()
-        raw = stdout.decode("utf-8", errors="replace").strip()
+    # Nếu có agent target và không phải câu hỏi về agent đó → giao thẳng
+    # Phân biệt: hỏi về agent (tình hình, status) vs ra lệnh cho agent
+    command_verbs = ["bảo", "nói với", "hỏi", "giao", "lệnh cho", "chỉ đạo", "nhờ",
+                     "yêu cầu", "ra lệnh", "hãy", "ask", "tell", "command", "order", "assign"]
+    is_command_to_agent = target_agent and any(v in msg_lower for v in command_verbs)
 
+
+    _oc_bin = __import__('shutil').which("openclaw") or "/home/nathan-ubutu/.npm-global/bin/openclaw"
+    _oc_env = {**os.environ, "PATH": os.environ.get("PATH","") + ":/home/nathan-ubutu/.npm-global/bin:/usr/local/bin"}
+
+    async def _call_agent(oc_agent_id: str, message: str) -> str:
+        """Gọi openclaw agent CLI, trả về text response."""
+        proc = await asyncio.create_subprocess_exec(
+            _oc_bin, "agent", "--agent", oc_agent_id, "--message", message, "--json",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, env=_oc_env
+        )
+        stdout, _ = await proc.communicate()
+        raw = stdout.decode("utf-8", errors="replace").strip()
         try:
             data = json.loads(raw)
-            # Lấy text từ payloads
             payloads = data.get("result", {}).get("payloads", [])
-            full_text = "\n".join(p.get("text", "") for p in payloads if p.get("text"))
+            return "\n".join(p.get("text","") for p in payloads if p.get("text"))
+        except:
+            return raw[:500] or ""
 
-            if not full_text:
-                full_text = data.get("error") or "❌ Đại Tướng không phản hồi."
+    async def _stream_text(text: str):
+        chunk_size = 10
+        for i in range(0, len(text), chunk_size):
+            yield "data: " + json.dumps({"type": "delta", "text": text[i:i+chunk_size]}) + "\n\n"
+            await asyncio.sleep(0.008)
 
-            # Stream từng chunk nhỏ (giả lập streaming)
-            visible = re.sub(r'\[ACTION:[^\]]+\]', '', full_text)
-            chunk_size = 8
-            for i in range(0, len(visible), chunk_size):
-                yield "data: " + json.dumps({"type": "delta", "text": visible[i:i+chunk_size]}) + "\n\n"
-                await asyncio.sleep(0.01)
+    # capture scope cho generator
+    _is_cmd   = bool(is_command_to_agent)
+    _target   = target_agent
+    _prompt   = full_prompt
+    _user_msg = user_msg
 
-            # Thực thi actions
-            executed = await _execute_action_tags(full_text, background_tasks)
-            yield "data: " + json.dumps({"type": "done", "executed": executed}) + "\n\n"
+    # ── Background runner: chạy agent + push notification khi xong ──
+    async def _run_delegate_bg(agent_id: str, oc_id: str, emoji: str, name: str, message: str):
+        try:
+            await push_activity(agent_id, f"🔄 Đang xử lý lệnh từ Chủ tướng...", "info")
+            response = await _call_agent(oc_id, message)
+            if not response:
+                response = "⚠️ Không có phản hồi."
 
-        except json.JSONDecodeError:
-            # Raw text nếu JSON fail
-            err_text = stderr.decode("utf-8", errors="replace")[:200]
-            yield "data: " + json.dumps({
-                "type": "error",
-                "text": f"❌ Lỗi gateway: {err_text or raw[:200]}"
-            }) + "\n\n"
+            short = response[:120] + ("..." if len(response) > 120 else "")
+            await push_activity(agent_id, f"✅ Hoàn thành: {short}", "success")
+
+            # Broadcast "agent_reply" đến tất cả WebSocket clients (Đại Tướng chat nhận)
+            event = json.dumps({
+                "type":     "agent_reply",
+                "agent_id": agent_id,
+                "emoji":    emoji,
+                "name":     name,
+                "message":  response,
+                "ts":       datetime.now().isoformat(),
+            })
+            dead = set()
+            for ws in global_ws_clients:
+                try:
+                    await ws.send_text(event)
+                except:
+                    dead.add(ws)
+            global_ws_clients.difference_update(dead)
+
         except Exception as e:
-            yield "data: " + json.dumps({"type": "error", "text": f"❌ {str(e)}"}) + "\n\n"
+            await push_activity(agent_id, f"❌ Lỗi: {str(e)[:80]}", "error")
+
+    async def _stream():
+        if _is_cmd and _target:
+            # ── Fire & Monitor ────────────────────────────────────
+            oc_id = _target.get("openclaw_agent_id")
+            emoji = _target.get("emoji", "")
+            name  = _target.get("name", oc_id)
+            label = f"{emoji} **{name}**"
+
+            ack = (
+                f"⚔️ Tuân lệnh! Đã giao nhiệm vụ cho {label}.\n\n"
+                f"📡 Theo dõi tiến trình tại **Activity Stream**.\n"
+                f"🔔 Thần sẽ báo cáo ngay khi {name} hoàn thành."
+            )
+            async for chunk in _stream_text(ack):
+                yield chunk
+
+            # Giao vào background — không block
+            asyncio.create_task(
+                _run_delegate_bg(_target["id"], oc_id, emoji, name, _user_msg)
+            )
+
+            yield "data: " + json.dumps({
+                "type": "done", "executed": [], "delegates": [oc_id],
+                "fire_and_monitor": True
+            }) + "\n\n"
+
+        else:
+            # ── Chat bình thường với Đại Tướng ───────────────────
+            import re as _re
+            general_text = await _call_agent("main", _prompt)
+            if not general_text:
+                general_text = "❌ Đại Tướng không phản hồi."
+
+            visible = _re.sub(r'\[ACTION:[^\]]+\]', '', general_text).strip()
+            async for chunk in _stream_text(visible):
+                yield chunk
+
+            executed = await _execute_action_tags(general_text, background_tasks)
+            yield "data: " + json.dumps({"type": "done", "executed": executed, "delegates": []}) + "\n\n"
 
     return StreamingResponse(_stream(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
-
-@app.post("/api/agents")
-async def register_agent(agent: NewAgent):
-    reg = load_registry()
-    # Kiểm tra trùng ID
-    if any(a["id"] == agent.id for a in reg["agents"]):
-        raise HTTPException(400, f"Agent ID '{agent.id}' đã tồn tại")
-    new_entry = {**agent.dict(), "status": "idle", "last_run": None, "last_log": None}
-    reg["agents"].append(new_entry)
-    save_registry(reg)
-    # Push activity để thông báo lên stream
     await push_activity(agent.id, f"✨ Agent mới được đăng ký: {agent.name}", "success")
     return {"status": "registered", "agent": new_entry}
 
