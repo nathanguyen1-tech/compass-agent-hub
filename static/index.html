@@ -408,16 +408,35 @@ function esc(s) {
 
 async function refreshLogs() {
   if (!selectedAgent) return;
-  const res = await fetch(`/api/agents/${selectedAgent.id}/logs?lines=300`);
-  const data = await res.json();
   const terminal = document.getElementById('tabLogs');
-  if (!data.lines.length) {
-    terminal.innerHTML = '<div class="log-empty">Chưa có log. Nhấn ▶ Chạy để bắt đầu.</div>';
+
+  // Thử lấy log file trước (script-based agents)
+  const logRes = await fetch(`/api/agents/${selectedAgent.id}/logs?lines=300`);
+  const logData = await logRes.json();
+
+  if (logData.lines.length) {
+    // Có log file — hiện nội dung
+    terminal.innerHTML = logData.lines.map(l => {
+      const cls = logClass(l);
+      return `<div class="log-line"><span class="${cls}">${esc(l)}</span></div>`;
+    }).join('');
+    terminal.scrollTop = terminal.scrollHeight;
     return;
   }
-  terminal.innerHTML = data.lines.map(l => {
-    const cls = logClass(l);
-    return `<div class="log-line"><span class="${cls}">${esc(l)}</span></div>`;
+
+  // Không có log file → dùng activity stream (chat-based agents)
+  const actRes = await fetch(`/api/agents/${selectedAgent.id}/activity?limit=100`);
+  const actData = await actRes.json();
+
+  if (!actData.events.length) {
+    terminal.innerHTML = '<div class="log-empty">Chưa có hoạt động nào.<br><span style="font-size:11px;color:var(--muted)">Agent này sẽ báo cáo khi đang làm việc.</span></div>';
+    return;
+  }
+
+  terminal.innerHTML = actData.events.map(e => {
+    const cls = { success:'log-ok', error:'log-err', warning:'log-warn', progress:'log-tool', info:'' }[e.level] || '';
+    const ts = new Date(e.ts).toLocaleTimeString('vi-VN');
+    return `<div class="log-line"><span class="log-ts">${ts}</span><span class="${cls}">${esc(e.message)}</span></div>`;
   }).join('');
   terminal.scrollTop = terminal.scrollHeight;
 }
@@ -495,7 +514,22 @@ function connectActivityStream() {
 
   activityWs.onmessage = (e) => {
     const data = JSON.parse(e.data);
-    if (data.type === 'activity') appendActivity(data.event);
+    if (data.type === 'activity') {
+      appendActivity(data.event);
+      // Nếu đang xem agent này trong detail view → cũng cập nhật Live Log
+      if (selectedAgent && data.event.agent_id === selectedAgent.id && view === 'agent') {
+        const terminal = document.getElementById('tabLogs');
+        const empty = terminal.querySelector('.log-empty');
+        if (empty) empty.remove();
+        const cls = { success:'log-ok', error:'log-err', warning:'log-warn', progress:'log-tool', info:'' }[data.event.level] || '';
+        const ts = new Date(data.event.ts).toLocaleTimeString('vi-VN');
+        const div = document.createElement('div');
+        div.className = 'log-line';
+        div.innerHTML = `<span class="log-ts">${ts}</span><span class="${cls}">${esc(data.event.message)}</span>`;
+        terminal.appendChild(div);
+        terminal.scrollTop = terminal.scrollHeight;
+      }
+    }
   };
 
   activityWs.onclose = () => {

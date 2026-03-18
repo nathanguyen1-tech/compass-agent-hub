@@ -67,7 +67,7 @@
       "workspace": "/home/nathan-ubutu/.openclaw/workspace",
       "script": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/scripts/health_check.sh",
       "trigger": "manual",
-      "status": "pending_approval",
+      "status": "rejected",
       "requires_approval": false,
       "openclaw_agent_id": "",
       "tags": [
@@ -75,8 +75,8 @@
         "health",
         "vitals"
       ],
-      "last_run": "2026-03-18T13:23:54.578988",
-      "last_log": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/health-check-20260318_132354.log"
+      "last_run": "2026-03-18T13:26:39.350398",
+      "last_log": "/home/nathan-ubutu/.openclaw/workspace/agent-hub/logs/health-check-20260318_132639.log"
     }
   ]
 }

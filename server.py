@@ -137,6 +137,12 @@ async def _watch_all_logs():
                     except json.JSONDecodeError:
                         msg, level = line, "info"
                     await push_activity(agent_id, msg, level)
+                    # Cũng broadcast vào per-agent WebSocket để Live Log tab nhận được
+                    await broadcast(agent_id, {
+                        "type": "log",
+                        "line": f"[{level.upper()}] {msg}",
+                        "ts": datetime.now().isoformat()
+                    })
         except Exception:
             pass
 
@@ -398,6 +404,12 @@ async def handle_approval(approval_id: str, req: ApprovalAction):
     return {"status": "ok"}
 
 # ── Logs ─────────────────────────────────────────────────────
+
+@app.get("/api/agents/{agent_id}/activity")
+def get_agent_activity(agent_id: str, limit: int = 100):
+    """Lấy activity stream của một agent cụ thể."""
+    events = [e for e in activity_log if e["agent_id"] == agent_id]
+    return {"events": events[-limit:]}
 
 @app.get("/api/agents/{agent_id}/logs")
 def get_logs(agent_id: str, lines: int = 100):
