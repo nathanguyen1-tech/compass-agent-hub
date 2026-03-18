@@ -611,6 +611,241 @@ class NewAgent(BaseModel):
     openclaw_agent_id: str = ""
     tags: List[str] = []
 
+# ── Đại Tướng Command Interface ──────────────────────────────
+
+class GeneralCommand(BaseModel):
+    message: str
+
+def _get_empire_context() -> dict:
+    """Lấy toàn bộ context của đế chế để Đại Tướng nắm tình hình."""
+    reg = load_registry()
+    agents = reg["agents"]
+    approvals = [a for a in load_approvals() if a["status"] == "pending"]
+
+    # Activity 24h gần nhất
+    recent_events = []
+    if ACTIVITY_FILE.exists():
+        cutoff = datetime.now().timestamp() - 86400
+        for line in ACTIVITY_FILE.read_text().splitlines()[-200:]:
+            try:
+                e = json.loads(line)
+                ts = datetime.fromisoformat(e["ts"]).timestamp()
+                if ts > cutoff:
+                    recent_events.append(e)
+            except:
+                pass
+
+    return {
+        "agents": agents,
+        "pending_approvals": approvals,
+        "recent_events": recent_events[-50:],
+        "now": datetime.now().isoformat()
+    }
+
+def _general_response(msg: str, ctx: dict) -> dict:
+    """Đại Tướng xử lý lệnh và trả lời."""
+    msg_lower = msg.lower().strip()
+    agents = ctx["agents"]
+    approvals = ctx["pending_approvals"]
+    events = ctx["recent_events"]
+    actions = []
+    response_lines = []
+
+    # ── Intent: Báo cáo tổng quan ──────────────────────────────
+    report_keywords = ["tình hình", "toàn cảnh", "báo cáo", "status", "tổng quan",
+                       "đang gì", "thế nào", "ra sao", "hôm nay", "today", "overview"]
+    if any(k in msg_lower for k in report_keywords):
+        running  = [a for a in agents if a["status"] == "running"]
+        pending  = [a for a in agents if a["status"] == "pending_approval"]
+        errors   = [a for a in agents if a["status"] == "error"]
+        idle     = [a for a in agents if a["status"] == "idle"]
+
+        response_lines.append(f"**Báo cáo tình hình đế chế — {datetime.now().strftime('%H:%M %d/%m')}**\n")
+
+        if running:
+            response_lines.append(f"🔵 **Đang hoạt động ({len(running)}):**")
+            for a in running:
+                last = next((e["message"] for e in reversed(events) if e["agent_id"] == a["id"]), "...")
+                response_lines.append(f"   {a['emoji']} {a['name']}: {last}")
+
+        if pending:
+            response_lines.append(f"\n⏳ **Chờ Chủ tướng duyệt ({len(pending)}):**")
+            for a in pending:
+                response_lines.append(f"   {a['emoji']} {a['name']} — cần phê duyệt")
+
+        if errors:
+            response_lines.append(f"\n🔴 **Có vấn đề ({len(errors)}):**")
+            for a in errors:
+                response_lines.append(f"   {a['emoji']} {a['name']} — lỗi lần chạy cuối")
+
+        response_lines.append(f"\n⚪ **Nghỉ ngơi:** {len(idle)} tướng")
+
+        # Tóm tắt 24h
+        today_success = len([e for e in events if e["level"] == "success"])
+        today_error   = len([e for e in events if e["level"] == "error"])
+        response_lines.append(f"\n📊 **24h qua:** {today_success} thành công · {today_error} lỗi · {len(events)} hoạt động")
+
+        if not running and not pending and not errors:
+            response_lines.append("\n✅ **Toàn bộ đế chế đang ổn định.**")
+
+    # ── Intent: Chạy agent ─────────────────────────────────────
+    elif any(k in msg_lower for k in ["chạy", "run", "kích hoạt", "trigger", "thực thi"]):
+        target = None
+        for a in agents:
+            if a["name"].lower() in msg_lower or a["id"].lower() in msg_lower:
+                target = a
+                break
+        # Nhận diện theo từ khoá
+        if not target:
+            if any(k in msg_lower for k in ["health", "kiểm tra", "check"]):
+                target = next((a for a in agents if "health" in a["id"]), None)
+            elif any(k in msg_lower for k in ["feedback", "bác sĩ", "góp ý"]):
+                target = next((a for a in agents if "feedback" in a["id"] and a.get("script")), None)
+
+        if target:
+            if not target.get("script"):
+                response_lines.append(f"⚠️ **{target['name']}** là chat-based agent — không thể trigger qua nút Run.")
+                response_lines.append(f"💬 Hãy nhắn tin trực tiếp với {target['name']} để giao nhiệm vụ.")
+            elif target["status"] == "running":
+                response_lines.append(f"🔵 **{target['name']}** đang chạy rồi, Chủ tướng.")
+            else:
+                actions.append({"type": "run", "agent_id": target["id"]})
+                response_lines.append(f"✅ Đã kích hoạt **{target['emoji']} {target['name']}**.")
+                response_lines.append(f"📡 Theo dõi tiến trình trên Activity Stream.")
+        else:
+            response_lines.append("❓ Chủ tướng muốn kích hoạt tướng nào? Các tướng hiện có:")
+            for a in agents:
+                response_lines.append(f"   {a['emoji']} {a['name']}")
+
+    # ── Intent: Duyệt ──────────────────────────────────────────
+    elif any(k in msg_lower for k in ["duyệt", "approve", "ok", "đồng ý", "cho phép", "xác nhận"]):
+        if not approvals:
+            response_lines.append("✅ Không có gì cần duyệt lúc này, Chủ tướng.")
+        else:
+            for appr in approvals:
+                actions.append({"type": "approve", "approval_id": appr["id"]})
+                agent = next((a for a in agents if a["id"] == appr["agent_id"]), {})
+                response_lines.append(f"✅ Đã duyệt: **{agent.get('emoji','')} {agent.get('name', appr['agent_id'])}**")
+            response_lines.append("📦 Đang commit & push...")
+
+    # ── Intent: Từ chối ────────────────────────────────────────
+    elif any(k in msg_lower for k in ["từ chối", "reject", "không duyệt", "cancel", "huỷ"]):
+        if not approvals:
+            response_lines.append("✅ Không có gì để từ chối.")
+        else:
+            for appr in approvals:
+                actions.append({"type": "reject", "approval_id": appr["id"]})
+                agent = next((a for a in agents if a["id"] == appr["agent_id"]), {})
+                response_lines.append(f"❌ Đã từ chối: **{agent.get('emoji','')} {agent.get('name', appr['agent_id'])}**")
+
+    # ── Intent: Dừng agent ─────────────────────────────────────
+    elif any(k in msg_lower for k in ["dừng", "stop", "tạm dừng", "halt"]):
+        running_agents = [a for a in agents if a["status"] == "running"]
+        if not running_agents:
+            response_lines.append("⚪ Không có tướng nào đang chạy để dừng.")
+        else:
+            for a in running_agents:
+                if a["name"].lower() in msg_lower or a["id"] in msg_lower or "tất cả" in msg_lower or "all" in msg_lower:
+                    actions.append({"type": "stop", "agent_id": a["id"]})
+                    response_lines.append(f"⏹ Đã dừng: **{a['emoji']} {a['name']}**")
+            if not actions:
+                response_lines.append("❓ Dừng tướng nào, Chủ tướng? Đang chạy:")
+                for a in running_agents:
+                    response_lines.append(f"   {a['emoji']} {a['name']}")
+
+    # ── Intent: Danh sách tướng ────────────────────────────────
+    elif any(k in msg_lower for k in ["danh sách", "list", "tướng", "agent", "có những ai", "có ai"]):
+        response_lines.append(f"**Quân đội hiện có ({len(agents)} tướng):**\n")
+        status_labels = {
+            "running": "🔵 đang chạy", "idle": "⚪ nghỉ",
+            "pending_approval": "⏳ chờ duyệt", "error": "🔴 lỗi",
+            "done": "✅ xong", "rejected": "❌ bị từ chối"
+        }
+        for a in agents:
+            status = status_labels.get(a["status"], a["status"])
+            last_run = f" · lần cuối {a['last_run'][:10]}" if a.get("last_run") else ""
+            response_lines.append(f"{a['emoji']} **{a['name']}** — {status}{last_run}")
+            response_lines.append(f"   _{a['description']}_")
+
+    # ── Default: Không hiểu ────────────────────────────────────
+    else:
+        response_lines.append("**Đại Tướng nghe, Chủ tướng.**")
+        response_lines.append("\nTôi có thể:")
+        response_lines.append("• **Báo cáo tình hình** — \"Tình hình thế nào?\" / \"Báo cáo hôm nay\"")
+        response_lines.append("• **Kích hoạt tướng** — \"Chạy Health Check\" / \"Kích hoạt FeedbackBot\"")
+        response_lines.append("• **Phê duyệt** — \"Duyệt\" / \"Approve tất cả\"")
+        response_lines.append("• **Từ chối** — \"Từ chối\" / \"Reject\"")
+        response_lines.append("• **Dừng** — \"Dừng Health Check\"")
+        response_lines.append("• **Xem quân đội** — \"Danh sách tướng\"")
+
+    return {
+        "response": "\n".join(response_lines),
+        "actions": actions
+    }
+
+@app.post("/api/general/command")
+async def general_command(cmd: GeneralCommand, background_tasks: BackgroundTasks):
+    """Đại Tướng nhận lệnh từ Chủ tướng và thực thi."""
+    ctx = _get_empire_context()
+    result = _general_response(cmd.message, ctx)
+
+    # Thực thi actions
+    executed = []
+    for action in result["actions"]:
+        try:
+            if action["type"] == "run":
+                agent_id = action["agent_id"]
+                reg = load_registry()
+                agent = next((a for a in reg["agents"] if a["id"] == agent_id), None)
+                if agent and agent.get("script"):
+                    log_file = LOGS_DIR / f"{agent_id}-{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+                    update_agent_status(agent_id, "running", {
+                        "last_run": datetime.now().isoformat(), "last_log": str(log_file)
+                    })
+                    await push_activity(agent_id, f"🚀 Lệnh từ Chủ tướng: bắt đầu chạy", "info")
+                    background_tasks.add_task(_run_agent_bg, agent_id, agent["script"], [], log_file)
+                    executed.append(f"run:{agent_id}")
+
+            elif action["type"] == "approve":
+                appr_id = action["approval_id"]
+                approvals = load_approvals()
+                appr = next((a for a in approvals if a["id"] == appr_id), None)
+                if appr:
+                    appr["status"] = "approved"
+                    appr["resolved_at"] = datetime.now().isoformat()
+                    save_approvals(approvals)
+                    Path("/tmp/fb_confirm").touch()
+                    update_agent_status(appr["agent_id"], "done")
+                    await push_activity(appr["agent_id"], "✅ Chủ tướng đã phê duyệt", "success")
+                    executed.append(f"approve:{appr_id}")
+
+            elif action["type"] == "reject":
+                appr_id = action["approval_id"]
+                approvals = load_approvals()
+                appr = next((a for a in approvals if a["id"] == appr_id), None)
+                if appr:
+                    appr["status"] = "rejected"
+                    appr["resolved_at"] = datetime.now().isoformat()
+                    save_approvals(approvals)
+                    Path("/tmp/fb_reject").touch()
+                    update_agent_status(appr["agent_id"], "rejected")
+                    await push_activity(appr["agent_id"], "❌ Chủ tướng từ chối", "error")
+                    executed.append(f"reject:{appr_id}")
+
+            elif action["type"] == "stop":
+                agent_id = action["agent_id"]
+                proc = agent_processes.get(agent_id)
+                if proc and proc.poll() is None:
+                    proc.terminate()
+                    update_agent_status(agent_id, "stopped")
+                    await push_activity(agent_id, "⏹ Bị Chủ tướng dừng", "warning")
+                    executed.append(f"stop:{agent_id}")
+
+        except Exception as e:
+            pass
+
+    return {"response": result["response"], "executed": executed}
+
 @app.post("/api/agents")
 async def register_agent(agent: NewAgent):
     reg = load_registry()

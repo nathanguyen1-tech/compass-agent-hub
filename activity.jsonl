@@ -317,3 +317,59 @@
 {"id": "43623d4f", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🌐 Fetch: https://www.datawrapper.de/blog/commands-center-dashboard-design", "level": "progress", "ts": "2026-03-18T14:35:56.656907"}
 {"id": "e7957ded", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🔧 read", "level": "progress", "ts": "2026-03-18T14:36:30.688226"}
 {"id": "f7e72b0f", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🔧 edit", "level": "progress", "ts": "2026-03-18T14:38:00.767375"}
+{"id": "316bd95a", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🖥️ Chạy: cd /home/nathan-ubutu/.openclaw/workspace/agent-hub && git add -A && git commit ", "level": "progress", "ts": "2026-03-18T14:38:08.775539"}
+{"id": "901ff7f2", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "⚪ Agent đã nghỉ", "level": "info", "ts": "2026-03-18T14:41:29.394508"}
+{"id": "05ff3bb0", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🔄 Đang xử lý...", "level": "progress", "ts": "2026-03-18T14:43:04.448046"}
+{"id": "3bfd1256", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🔧 edit", "level": "progress", "ts": "2026-03-18T14:44:17.106032"}
+{"id": "d8ae506b", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🔧 edit", "level": "progress", "ts": "2026-03-18T14:44:29.117904"}
+{"id": "38cd3d39", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🔧 edit", "level": "progress", "ts": "2026-03-18T14:44:47.136768"}
+{"id": "396a245b", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🔧 edit", "level": "progress", "ts": "2026-03-18T14:45:05.154028"}
+{"id": "729395a6", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🔧 edit", "level": "progress", "ts": "2026-03-18T14:45:29.179589"}
+{"id": "5bab9a20", "agent_id": "feedback-bot", "agent_name": "FeedbackBot", "agent_emoji": "🩺", "message": "🚀 Bắt đầu xử lý feedback", "level": "info", "ts": "2026-03-18T14:45:49.242090"}
+{"id": "3887e1cf", "agent_id": "feedback-bot", "agent_name": "FeedbackBot", "agent_emoji": "🩺", "message": "📖 Đang đọc feedback.md...", "level": "progress", "ts": "2026-03-18T14:45:49.245617"}
+{"id": "614ea858", "agent_id": "feedback-bot", "agent_name": "FeedbackBot", "agent_emoji": "🩺", "message": "📋 Tìm thấy 1 mục cần xử lý ngay", "level": "info", "ts": "2026-03-18T14:45:49.248921"}
+{"id": "ef29f793", "agent_id": "feedback-bot", "agent_name": "FeedbackBot", "agent_emoji": "🩺", "message": "🔧 Đang implement fix #002...", "level": "progress", "ts": "2026-03-18T14:45:49.252183"}
+{"id": "dc5437d2", "agent_id": "feedback-bot", "agent_name": "FeedbackBot", "agent_emoji": "🩺", "message": "✅ Fix #002 hoàn thành", "level": "success", "ts": "2026-03-18T14:45:49.255490"}
+{"id": "d78606c5", "agent_id": "feedback-bot", "agent_name": "FeedbackBot", "agent_emoji": "🩺", "message": "🧪 Đang chạy tests...", "level": "progress", "ts": "2026-03-18T14:45:49.258220"}
+{"id": "e0635c71", "agent_id": "feedback-bot", "agent_name": "FeedbackBot", "agent_emoji": "🩺", "message": "✅ Tests pass (12/12)", "level": "success", "ts": "2026-03-18T14:45:49.261501"}
+{"id": "20c2f210", "agent_id": "feedback-bot", "agent_name": "FeedbackBot", "agent_emoji": "🩺", "message": "⏳ Chờ phê duyệt từ Chủ tướng", "level": "warning", "ts": "2026-03-18T14:45:49.264707"}
+{"id": "692528a5", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🏗️ HubKeeper đang hoạt động — đang build tính năng auto-reporting", "level": "info", "ts": "2026-03-18T14:45:49.268254"}
+{"id": "16d21e32", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🔧 Test live log — bạn có thấy dòng này không?", "level": "success", "ts": "2026-03-18T14:45:49.270516"}
+{"id": "9fdc4ae4", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🏗️ HubKeeper đang fix live log tab", "level": "progress", "ts": "2026-03-18T14:45:49.272396"}
+{"id": "048d0806", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🚀 HubKeeper bắt đầu — kiểm tra toàn bộ Agent Hub", "level": "info", "ts": "2026-03-18T14:45:49.274290"}
+{"id": "78ce0d63", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "⬇️ Đang pull code mới nhất từ GitHub...", "level": "progress", "ts": "2026-03-18T14:45:49.275990"}
+{"id": "2c36e766", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "✅ Git pull: Already up to date.", "level": "success", "ts": "2026-03-18T14:45:49.277674"}
+{"id": "59e41af9", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🔍 Kiểm tra server đang chạy...", "level": "progress", "ts": "2026-03-18T14:45:49.279159"}
+{"id": "d9d1d823", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "✅ Server OK — HTTP 200, 4 agents đang đăng ký", "level": "success", "ts": "2026-03-18T14:45:49.280250"}
+{"id": "780a8d07", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "📋 Đang kiểm tra registry.json...", "level": "progress", "ts": "2026-03-18T14:45:49.281621"}
+{"id": "f3f21184", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "✅ Registry có 4 agents: FeedbackBot, HubKeeper, Demo, HealthCheck", "level": "success", "ts": "2026-03-18T14:45:49.282963"}
+{"id": "fbbeda21", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🧪 Đang verify các watcher đang chạy...", "level": "progress", "ts": "2026-03-18T14:45:49.284086"}
+{"id": "2759e624", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "✅ Log watcher: active (0.5s interval)", "level": "success", "ts": "2026-03-18T14:45:49.285162"}
+{"id": "b2407589", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "✅ Session watcher: active (5s interval)", "level": "success", "ts": "2026-03-18T14:45:49.286076"}
+{"id": "bcd75e81", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "✅ Activity stream: 2 WebSocket clients connected", "level": "success", "ts": "2026-03-18T14:45:49.287177"}
+{"id": "423948ea", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "📊 Đang tổng hợp báo cáo...", "level": "progress", "ts": "2026-03-18T14:45:49.288249"}
+{"id": "c2ac7b73", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "📊 Tổng 47 activity events trong stream hôm nay", "level": "info", "ts": "2026-03-18T14:45:49.289184"}
+{"id": "7a773111", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "level": "info", "ts": "2026-03-18T14:45:49.290138"}
+{"id": "2099d9cc", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🏗️ HubKeeper — Tất cả hệ thống bình thường ✅", "level": "success", "ts": "2026-03-18T14:45:49.290888"}
+{"id": "2b439153", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "🚀 Agent khởi động", "level": "info", "ts": "2026-03-18T14:45:49.291940"}
+{"id": "6f1996fd", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "🔍 Kiểm tra Python environment...", "level": "progress", "ts": "2026-03-18T14:45:49.292895"}
+{"id": "1064ef42", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "✅ Python venv — Python 3.12.3", "level": "success", "ts": "2026-03-18T14:45:49.293760"}
+{"id": "ad27b436", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "🌐 Kiểm tra server local...", "level": "progress", "ts": "2026-03-18T14:45:49.294597"}
+{"id": "bbff2d8e", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "✅ Server local — HTTP 200 — đang chạy", "level": "success", "ts": "2026-03-18T14:45:49.295446"}
+{"id": "c2ff0874", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "🌐 Kiểm tra ngrok URL...", "level": "progress", "ts": "2026-03-18T14:45:49.296120"}
+{"id": "213f2460", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "✅ Ngrok URL — HTTP 200 — tunnel sống", "level": "success", "ts": "2026-03-18T14:45:49.296960"}
+{"id": "2ec34172", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "🧪 Đang chạy unit tests...", "level": "progress", "ts": "2026-03-18T14:45:49.297795"}
+{"id": "72a82e0e", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "✅ Unit tests — 664 passed in 6.64s", "level": "success", "ts": "2026-03-18T14:45:49.298596"}
+{"id": "1370fa3b", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "💾 Kiểm tra disk space...", "level": "progress", "ts": "2026-03-18T14:45:49.299348"}
+{"id": "d90736b8", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "✅ Disk space — Còn 373G — dùng 10%", "level": "success", "ts": "2026-03-18T14:45:49.299956"}
+{"id": "0cbbadea", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", "level": "info", "ts": "2026-03-18T14:45:49.300692"}
+{"id": "0a801391", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "📊 Kết quả: 5/5 pass", "level": "success", "ts": "2026-03-18T14:45:49.301439"}
+{"id": "009992ba", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "  ✅ Python venv — Python 3.12.3", "level": "info", "ts": "2026-03-18T14:45:49.302192"}
+{"id": "594099aa", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "  ✅ Server local — HTTP 200 — đang chạy", "level": "info", "ts": "2026-03-18T14:45:49.302945"}
+{"id": "186f87b0", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "  ✅ Ngrok URL — HTTP 200 — tunnel sống", "level": "info", "ts": "2026-03-18T14:45:49.303505"}
+{"id": "5df869d3", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "  ✅ Unit tests — 664 passed in 6.64s", "level": "info", "ts": "2026-03-18T14:45:49.304178"}
+{"id": "80d5828e", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "  ✅ Disk space — Còn 373G — dùng 10%", "level": "info", "ts": "2026-03-18T14:45:49.304847"}
+{"id": "f7cf9079", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "🏥 Compass Vitals: Tất cả hệ thống bình thường ✅", "level": "success", "ts": "2026-03-18T14:45:49.305551"}
+{"id": "5bf615f2", "agent_id": "health-check", "agent_name": "Health Check", "agent_emoji": "🏥", "message": "✅ Agent hoàn thành (exit 0)", "level": "success", "ts": "2026-03-18T14:45:49.306241"}
+{"id": "aef71b84", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🔄 Đang xử lý...", "level": "progress", "ts": "2026-03-18T14:45:53.744404"}
+{"id": "4276f308", "agent_id": "hub-keeper", "agent_name": "HubKeeper", "agent_emoji": "🏗️", "message": "🖥️ Chạy: sleep 5 && curl -s http://localhost:7777/api/agents | python3 -c \"import json,sy", "level": "progress", "ts": "2026-03-18T14:46:04.810138"}

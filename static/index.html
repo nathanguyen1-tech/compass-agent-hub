@@ -136,6 +136,41 @@
   .info-val { color: var(--text); font-family: monospace; word-break: break-all; }
   .tag-chip { background: var(--surface2); border: 1px solid var(--border); padding: 2px 9px; border-radius: 20px; font-size: 11px; display: inline-block; margin: 2px; }
 
+  /* ── Đại Tướng Interface ──────────────────── */
+  #generalView { display:none; flex-direction:column; flex:1; overflow:hidden; }
+  .general-header { padding:16px 20px; border-bottom:1px solid var(--border); background:linear-gradient(135deg,#1a0a2e,#0d1117); flex-shrink:0; }
+  .general-avatar { display:flex; align-items:center; gap:14px; }
+  .general-avatar-icon { width:48px; height:48px; background:linear-gradient(135deg,#f5a623,#e8920a); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+  .general-name { font-size:16px; font-weight:700; color:#f5a623; }
+  .general-desc { font-size:12px; color:var(--muted); margin-top:2px; }
+  .general-status { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:12px; color:var(--cyan); }
+
+  .general-messages { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:12px; }
+  .msg-bubble { max-width:75%; display:flex; flex-direction:column; gap:4px; }
+  .msg-bubble.user { align-self:flex-end; align-items:flex-end; }
+  .msg-bubble.general { align-self:flex-start; align-items:flex-start; }
+  .msg-content { padding:10px 14px; border-radius:12px; font-size:13px; line-height:1.6; white-space:pre-wrap; }
+  .msg-bubble.user .msg-content { background:var(--blue); color:white; border-bottom-right-radius:3px; }
+  .msg-bubble.general .msg-content { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-bottom-left-radius:3px; }
+  .msg-time { font-size:10px; color:var(--muted); }
+  .msg-actions { display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; }
+  .msg-action-btn { background:var(--surface); border:1px solid var(--border); color:var(--text); padding:4px 10px; border-radius:20px; font-size:11px; cursor:pointer; }
+  .msg-action-btn:hover { border-color:var(--blue); color:var(--blue); }
+
+  .general-input-area { padding:12px 16px; border-top:1px solid var(--border); background:var(--surface); flex-shrink:0; }
+  .general-input-row { display:flex; gap:8px; align-items:flex-end; }
+  .general-input { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 14px; color:var(--text); font-size:13px; resize:none; min-height:42px; max-height:120px; font-family:inherit; }
+  .general-input:focus { outline:none; border-color:var(--blue); }
+  .general-send { background:linear-gradient(135deg,#f5a623,#e8920a); border:none; color:#000; padding:10px 16px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+  .general-send:hover { opacity:.9; }
+  .general-suggestions { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .suggestion-chip { background:var(--surface2); border:1px solid var(--border); color:var(--muted); padding:4px 10px; border-radius:20px; font-size:11px; cursor:pointer; }
+  .suggestion-chip:hover { border-color:#f5a623; color:#f5a623; }
+  .typing-indicator { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; padding:4px 0; }
+  .typing-dot { width:6px; height:6px; background:var(--muted); border-radius:50%; animation:pulse 1.4s infinite; }
+  .typing-dot:nth-child(2) { animation-delay:.2s; }
+  .typing-dot:nth-child(3) { animation-delay:.4s; }
+
   /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
@@ -157,6 +192,7 @@
   </div>
   <div class="header-right">
     <button class="btn-cmd active" id="btnCmdCenter" onclick="showCommandCenter()">🏯 Command Center</button>
+    <button class="btn-cmd" id="btnGeneral" onclick="showGeneral()">⚔️ Đại Tướng</button>
     <div id="clock"></div>
   </div>
 </header>
@@ -219,6 +255,55 @@
       </div>
     </div>
 
+    <!-- ── Đại Tướng Interface ── -->
+    <div id="generalView">
+      <div class="general-header">
+        <div class="general-avatar">
+          <div class="general-avatar-icon">⚔️</div>
+          <div>
+            <div class="general-name">Đại Tướng Nathan-Ubu</div>
+            <div class="general-desc">Tổng chỉ huy · Nắm toàn bộ đế chế · Thực thi lệnh Chủ tướng</div>
+          </div>
+          <div class="general-status">
+            <div style="width:7px;height:7px;border-radius:50%;background:var(--cyan);animation:pulse 2s infinite"></div>
+            Sẵn sàng
+          </div>
+        </div>
+      </div>
+
+      <div class="general-messages" id="generalMessages">
+        <!-- Tin nhắn chào -->
+        <div class="msg-bubble general">
+          <div class="msg-content" id="welcomeMsg">⚔️ Thần Nathan-Ubu kính chào Chủ tướng.
+
+Thần nắm toàn bộ thông tin đế chế và sẵn sàng thực thi mệnh lệnh.
+
+Chủ tướng có thể hỏi:
+• <b>Tình hình thế nào?</b> — báo cáo toàn cảnh
+• <b>Chạy Health Check</b> — kích hoạt tướng
+• <b>Duyệt tất cả</b> — phê duyệt pending
+• <b>Danh sách tướng</b> — xem quân đội</div>
+          <div class="msg-time" id="welcomeTime"></div>
+        </div>
+      </div>
+
+      <div class="general-input-area">
+        <div class="general-suggestions" id="generalSuggestions">
+          <span class="suggestion-chip" onclick="sendSuggestion(this)">📊 Tình hình thế nào?</span>
+          <span class="suggestion-chip" onclick="sendSuggestion(this)">⚔️ Danh sách tướng</span>
+          <span class="suggestion-chip" onclick="sendSuggestion(this)">🏥 Chạy Health Check</span>
+          <span class="suggestion-chip" onclick="sendSuggestion(this)">✅ Duyệt tất cả</span>
+        </div>
+        <div class="general-input-row">
+          <textarea class="general-input" id="generalInput" rows="1"
+            placeholder="Hạ lệnh cho Đại Tướng..."
+            onkeydown="handleGeneralKey(event)"
+            oninput="autoResize(this)"></textarea>
+          <button class="general-send" onclick="sendGeneralCommand()">Hạ lệnh ⚔️</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Agent Detail ── -->
     <div id="agentDetail">
       <!-- Breadcrumb -->
@@ -270,10 +355,18 @@ setInterval(() => {
 }, 1000);
 
 // ── View switching ────────────────────────────────────────────
+function _hideAllViews() {
+  document.getElementById('commandCenter').style.display = 'none';
+  document.getElementById('agentDetail').style.display = 'none';
+  document.getElementById('generalView').style.display = 'none';
+  document.getElementById('btnCmdCenter').classList.remove('active');
+  document.getElementById('btnGeneral').classList.remove('active');
+}
+
 function showCommandCenter() {
   view = 'cmd';
+  _hideAllViews();
   document.getElementById('commandCenter').style.display = 'flex';
-  document.getElementById('agentDetail').style.display = 'none';
   document.getElementById('btnCmdCenter').classList.add('active');
   selectedAgent = null;
   renderAgentList();
@@ -281,9 +374,133 @@ function showCommandCenter() {
 
 function showAgentDetail() {
   view = 'agent';
-  document.getElementById('commandCenter').style.display = 'none';
+  _hideAllViews();
   document.getElementById('agentDetail').style.display = 'flex';
-  document.getElementById('btnCmdCenter').classList.remove('active');
+}
+
+function showGeneral() {
+  view = 'general';
+  _hideAllViews();
+  document.getElementById('generalView').style.display = 'flex';
+  document.getElementById('btnGeneral').classList.add('active');
+  selectedAgent = null;
+  renderAgentList();
+  // Set welcome time
+  document.getElementById('welcomeTime').textContent = new Date().toLocaleTimeString('vi-VN');
+  document.getElementById('generalInput').focus();
+}
+
+// ── Đại Tướng Chat ────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleGeneralKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendGeneralCommand();
+  }
+}
+
+function sendSuggestion(el) {
+  document.getElementById('generalInput').value = el.textContent.replace(/^[^\s]+ /, '');
+  sendGeneralCommand();
+}
+
+function appendMsg(role, text, actionBtns = []) {
+  const messages = document.getElementById('generalMessages');
+  const bubble = document.createElement('div');
+  bubble.className = `msg-bubble ${role}`;
+
+  const content = document.createElement('div');
+  content.className = 'msg-content';
+  // Render markdown-lite: **bold**
+  content.innerHTML = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/<b>(<[^>]+>)/g, '$1<b>') // fix nesting
+    .replace(/^• /gm, '• ');
+
+  const time = document.createElement('div');
+  time.className = 'msg-time';
+  time.textContent = new Date().toLocaleTimeString('vi-VN');
+
+  bubble.appendChild(content);
+  bubble.appendChild(time);
+
+  if (actionBtns.length) {
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+    actionBtns.forEach(btn => {
+      const b = document.createElement('button');
+      b.className = 'msg-action-btn';
+      b.textContent = btn.label;
+      b.onclick = () => { document.getElementById('generalInput').value = btn.cmd; sendGeneralCommand(); };
+      actions.appendChild(b);
+    });
+    bubble.appendChild(actions);
+  }
+
+  messages.appendChild(bubble);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function showTyping() {
+  const messages = document.getElementById('generalMessages');
+  const div = document.createElement('div');
+  div.id = 'typingIndicator';
+  div.className = 'typing-indicator';
+  div.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div><span style="margin-left:4px">Đại Tướng đang soạn báo cáo...</span>';
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+async function sendGeneralCommand() {
+  const input = document.getElementById('generalInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  appendMsg('user', msg);
+  showTyping();
+
+  try {
+    const res = await fetch('/api/general/command', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: msg})
+    });
+    const data = await res.json();
+    hideTyping();
+
+    // Xác định action buttons gợi ý dựa trên response
+    let actionBtns = [];
+    if (data.executed && data.executed.length > 0) {
+      actionBtns.push({label: '📡 Xem Activity Stream', cmd: 'tình hình thế nào'});
+    }
+    if (data.response.includes('chờ duyệt') || data.response.includes('pending')) {
+      actionBtns.push({label: '✅ Duyệt tất cả', cmd: 'duyệt tất cả'});
+    }
+
+    appendMsg('general', data.response, actionBtns);
+
+    // Refresh agents nếu có action
+    if (data.executed && data.executed.length > 0) {
+      setTimeout(fetchAgents, 1000);
+      setTimeout(fetchApprovals, 1000);
+    }
+  } catch (err) {
+    hideTyping();
+    appendMsg('general', '❌ Lỗi kết nối. Thần xin lỗi Chủ tướng.');
+  }
 }
 
 // ── Fetch agents ──────────────────────────────────────────────
