@@ -569,9 +569,21 @@ async def handle_approval(approval_id: str, req: ApprovalAction):
 # ── Logs ─────────────────────────────────────────────────────
 
 @app.get("/api/agents/{agent_id}/activity")
-def get_agent_activity(agent_id: str, limit: int = 100):
-    """Lấy activity stream của một agent cụ thể."""
-    events = [e for e in activity_log if e["agent_id"] == agent_id]
+def get_agent_activity(agent_id: str, limit: int = 150):
+    """Lấy activity stream của một agent — đọc từ disk để không bao giờ mất."""
+    if not ACTIVITY_FILE.exists():
+        return {"events": []}
+    events = []
+    try:
+        for line in ACTIVITY_FILE.read_text().splitlines():
+            try:
+                event = json.loads(line)
+                if event.get("agent_id") == agent_id:
+                    events.append(event)
+            except Exception:
+                pass
+    except Exception:
+        pass
     return {"events": events[-limit:]}
 
 @app.get("/api/agents/{agent_id}/logs")
