@@ -539,8 +539,105 @@ function switchTab(tab, el) {
   document.getElementById('tabInfo').style.display = tab === 'info' ? 'block' : 'none';
 }
 
+// ── Add Agent Modal ───────────────────────────────────────────
 function showAddAgent() {
-  alert('Tính năng đăng ký agent mới — coming soon!\n\nHiện tại: thêm vào registry.json và restart server.');
+  const existing = document.getElementById('addAgentModal');
+  if (existing) { existing.remove(); return; }
+
+  const modal = document.createElement('div');
+  modal.id = 'addAgentModal';
+  modal.style.cssText = `
+    position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1000;
+    display:flex; align-items:center; justify-content:center;
+  `;
+  modal.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:480px;max-width:95vw">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <h3 style="font-size:15px">✨ Đăng ký Agent mới</h3>
+        <button onclick="document.getElementById('addAgentModal').remove()"
+          style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div style="display:grid;gap:10px;font-size:13px">
+        ${field('id',    'Agent ID *',    'feedback-bot', 'text')}
+        ${field('name',  'Tên hiển thị *','FeedbackBot',  'text')}
+        ${field('emoji', 'Emoji',         '🤖',           'text')}
+        ${field('description','Mô tả',   'Nhiệm vụ của agent...','text')}
+        ${field('openclaw_agent_id','OpenClaw Agent ID','compass-feedback','text','ID trong ~/.openclaw/agents/ — để trống nếu không phải chat-based agent')}
+        ${field('workspace','Workspace', '/home/nathan-ubutu/.openclaw/workspace-...','text')}
+        ${field('script','Script (tùy chọn)','','text','Đường dẫn bash script — để trống nếu là chat-based agent')}
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="add_requires_approval" checked>
+          Yêu cầu phê duyệt trước khi commit
+        </label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
+        <button onclick="document.getElementById('addAgentModal').remove()"
+          style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:6px;cursor:pointer">
+          Hủy
+        </button>
+        <button onclick="submitAddAgent()"
+          style="background:var(--green);border:none;color:white;padding:7px 16px;border-radius:6px;cursor:pointer;font-weight:600">
+          ✨ Thêm Agent
+        </button>
+      </div>
+      <div id="addAgentError" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function field(id, label, placeholder, type='text', hint='') {
+  return `
+    <div>
+      <label style="display:block;color:var(--muted);margin-bottom:4px">${label}</label>
+      <input id="add_${id}" type="${type}" placeholder="${placeholder}"
+        style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;
+               padding:7px 10px;color:var(--text);font-size:12px">
+      ${hint ? `<div style="color:var(--muted);font-size:11px;margin-top:3px">${hint}</div>` : ''}
+    </div>
+  `;
+}
+
+async function submitAddAgent() {
+  const errEl = document.getElementById('addAgentError');
+  errEl.style.display = 'none';
+
+  const getValue = id => document.getElementById(`add_${id}`)?.value?.trim() || '';
+  const id = getValue('id');
+  const name = getValue('name');
+  if (!id || !name) {
+    errEl.textContent = '⚠️ Agent ID và Tên là bắt buộc';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const payload = {
+    id, name,
+    emoji:               getValue('emoji') || '🤖',
+    description:         getValue('description'),
+    openclaw_agent_id:   getValue('openclaw_agent_id'),
+    workspace:           getValue('workspace'),
+    script:              getValue('script'),
+    requires_approval:   document.getElementById('add_requires_approval').checked,
+    rank: 'Tướng lĩnh',
+    tags: [],
+  };
+
+  const res = await fetch('/api/agents', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    errEl.textContent = '❌ ' + (err.detail || 'Lỗi không xác định');
+    errEl.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('addAgentModal').remove();
+  await fetchAgents();
 }
 
 // ── Init ──────────────────────────────────────────────────────

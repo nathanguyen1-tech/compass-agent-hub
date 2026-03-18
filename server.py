@@ -100,41 +100,45 @@ async def _watch_agent_sessions():
             pass
 
 
-async def _watch_agent_log(agent_id: str):
-    """Tự động watch /tmp/hub-<agent_id>.log và push mỗi dòng mới lên activity stream."""
-    log_path = Path(f"/tmp/hub-{agent_id}.log")
-    last_pos = 0
+async def _watch_all_logs():
+    """Single loop watch /tmp/hub-<agent_id>.log cho MỌI agent trong registry.
+    Tự động pick up agent mới mà không cần restart server."""
+    positions: Dict[str, int] = {}   # agent_id → file position
 
     while True:
         await asyncio.sleep(0.5)
         try:
-            if not log_path.exists():
-                last_pos = 0
-                continue
-            # Reset nếu file bị tạo lại (agent mới chạy)
-            size = log_path.stat().st_size
-            if size < last_pos:
-                last_pos = 0
-            if size == last_pos:
-                continue
-            with open(log_path) as f:
-                f.seek(last_pos)
-                new_lines = f.readlines()
-                last_pos = f.tell()
-            for line in new_lines:
-                line = line.strip()
-                if not line:
+            reg = load_registry()
+            for a in reg["agents"]:
+                agent_id = a["id"]
+                log_path = Path(f"/tmp/hub-{agent_id}.log")
+                if not log_path.exists():
+                    positions[agent_id] = 0
                     continue
-                try:
-                    data = json.loads(line)
-                    msg   = data.get("message", line)
-                    level = data.get("level", "info")
-                except json.JSONDecodeError:
-                    msg   = line
-                    level = "info"
-                await push_activity(agent_id, msg, level)
-        except Exception as e:
-            pass  # Không crash watcher vì lỗi nhỏ
+                size = log_path.stat().st_size
+                last_pos = positions.get(agent_id, 0)
+                # File bị reset (agent chạy lại)
+                if size < last_pos:
+                    last_pos = 0
+                if size == last_pos:
+                    continue
+                with open(log_path) as f:
+                    f.seek(last_pos)
+                    new_lines = f.readlines()
+                    positions[agent_id] = f.tell()
+                for line in new_lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        data  = json.loads(line)
+                        msg   = data.get("message", line)
+                        level = data.get("level", "info")
+                    except json.JSONDecodeError:
+                        msg, level = line, "info"
+                    await push_activity(agent_id, msg, level)
+        except Exception:
+            pass
 
 
 @asynccontextmanager
@@ -155,18 +159,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[startup] Lỗi reset status: {e}")
 
-    # Khởi động file watcher cho mọi agent
-    try:
-        reg = load_registry()
-        for a in reg["agents"]:
-            asyncio.create_task(_watch_agent_log(a["id"]))
-            print(f"[watcher] Đang watch /tmp/hub-{a['id']}.log")
-    except Exception as e:
-        print(f"[startup] Lỗi khởi động watcher: {e}")
+    # Một loop duy nhất watch log files của TẤT CẢ agent (kể cả agent mới thêm sau)
+    asyncio.create_task(_watch_all_logs())
+    print("[watcher] Log watcher khởi động (dynamic — tự pick up agent mới)")
 
-    # Khởi động session watcher (detect chat-based agents)
+    # Session watcher — detect chat-based agents đang hoạt động
     asyncio.create_task(_watch_agent_sessions())
-    print("[watcher] Session watcher khởi động")
+    print("[watcher] Session watcher khởi động (dynamic)")
 
     yield
 
@@ -412,12 +411,31 @@ def get_logs(agent_id: str, lines: int = 100):
     all_lines = log_file.read_text().splitlines()
     return {"lines": all_lines[-lines:]}
 
+class NewAgent(BaseModel):
+    id: str
+    name: str
+    emoji: str = "🤖"
+    rank: str = "Tướng lĩnh"
+    description: str = ""
+    workspace: str = ""
+    script: str = ""
+    trigger: str = "manual"
+    requires_approval: bool = True
+    openclaw_agent_id: str = ""
+    tags: List[str] = []
+
 @app.post("/api/agents")
-async def register_agent(agent: dict):
+async def register_agent(agent: NewAgent):
     reg = load_registry()
-    reg["agents"].append(agent)
+    # Kiểm tra trùng ID
+    if any(a["id"] == agent.id for a in reg["agents"]):
+        raise HTTPException(400, f"Agent ID '{agent.id}' đã tồn tại")
+    new_entry = {**agent.dict(), "status": "idle", "last_run": None, "last_log": None}
+    reg["agents"].append(new_entry)
     save_registry(reg)
-    return {"status": "registered"}
+    # Push activity để thông báo lên stream
+    await push_activity(agent.id, f"✨ Agent mới được đăng ký: {agent.name}", "success")
+    return {"status": "registered", "agent": new_entry}
 
 # ── WebSockets ────────────────────────────────────────────────
 
