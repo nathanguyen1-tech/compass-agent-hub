@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/components/ActivityStream.tsx","./src/components/AgentCard.tsx","./src/components/Header.tsx","./src/hooks/useWebSocket.ts","./src/pages/AgentDetail.tsx","./src/pages/CommandCenter.tsx","./src/pages/GeneralChat.tsx","./src/stores/agentStore.ts","./src/types/index.ts"],"version":"5.6.3"}
