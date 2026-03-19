@@ -15,12 +15,20 @@ OPENCLAW_AGENTS_DIR = Path.home() / ".openclaw" / "agents"
 
 # Default emoji map cho known agents
 _EMOJI_DEFAULTS = {
-    "main":               "🤖",
+    "main":               "🧠",
     "hub-keeper":         "🏗️",
     "compass-feedback":   "🩺",
     "feedback-bot":       "🩺",
     "health-check":       "🏥",
     "productivity-agent": "📋",
+}
+
+_NAME_OVERRIDES = {
+    "main":               "Main Agent",
+    "hub-keeper":         "HubKeeper",
+    "compass-feedback":   "FeedbackBot",
+    "health-check":       "Health Check",
+    "productivity-agent": "Productivity Agent",
 }
 
 def _load_config() -> dict:
@@ -56,14 +64,29 @@ def sync_agents_from_config() -> list[str]:
             continue
 
         identity = a.get("identity", {})
-        name     = identity.get("name") or a.get("name") or agent_id
-        emoji    = identity.get("emoji") or _EMOJI_DEFAULTS.get(agent_id, "🤖")
+        # identity.name là persona AI (VD: "Nathan-Ubu") — KHÔNG dùng làm display name
+        # Ưu tiên: existing custom name > openclaw 'name' field > slug từ id
+        existing = get_agent(agent_id)
+        if existing and existing.source == "manual":
+            # Giữ nguyên name/emoji đã đặt thủ công
+            name  = existing.name
+            emoji = existing.emoji
+        else:
+            # Ưu tiên: override cứng > openclaw.json name > slug từ id
+            if agent_id in _NAME_OVERRIDES:
+                name = _NAME_OVERRIDES[agent_id]
+            else:
+                raw_name = a.get("name", "")
+                if not raw_name or raw_name == agent_id:
+                    name = agent_id.replace("-", " ").title()
+                else:
+                    # Bỏ các giá trị placeholder như "hub-keeper", "compass-feedback"
+                    cleaned = raw_name.replace("-", " ").title()
+                    name = cleaned
+            emoji = _EMOJI_DEFAULTS.get(agent_id) or identity.get("emoji") or "🤖"
         model    = a.get("model", "")
         workspace = a.get("workspace", "")
         agent_dir = a.get("agentDir", str(OPENCLAW_AGENTS_DIR / agent_id / "agent"))
-
-        # Bảo toàn status + fields tuỳ chỉnh nếu đã có
-        existing = get_agent(agent_id)
 
         agent = Agent(
             id                = agent_id,
