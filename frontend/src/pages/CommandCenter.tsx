@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { useAgentStore } from '../stores/agentStore'
 import AgentCard from '../components/AgentCard'
 import ActivityStream from '../components/ActivityStream'
+import AddAgentModal from '../components/AddAgentModal'
 
 export default function CommandCenter() {
+  const [showAdd, setShowAdd] = useState(false)
   const { agents, approvals } = useAgentStore()
   const running = agents.filter(a => a.status === 'running')
   const pending = approvals.filter(a => a.status === 'pending')
@@ -50,7 +53,7 @@ export default function CommandCenter() {
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-gray-500 uppercase tracking-wider font-medium">⚔️ Tướng lĩnh</span>
-            <button className="text-xs text-blue hover:underline">+ Thêm</button>
+            <button onClick={() => setShowAdd(true)} className="text-xs text-blue hover:underline">+ Thêm</button>
           </div>
           {agents.map(a => <AgentCard key={a.id} agent={a}/>)}
         </div>
@@ -108,6 +111,9 @@ export default function CommandCenter() {
       <div className="w-96 shrink-0 flex flex-col overflow-hidden">
         <ActivityStream/>
       </div>
+
+      {/* Modal */}
+      {showAdd && <AddAgentModal onClose={() => setShowAdd(false)}/>}
     </div>
   )
 }
