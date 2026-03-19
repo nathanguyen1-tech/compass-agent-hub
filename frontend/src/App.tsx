@@ -5,18 +5,18 @@ import Header from './components/Header'
 import CommandCenter from './pages/CommandCenter'
 import GeneralChat from './pages/GeneralChat'
 import AgentDetail from './pages/AgentDetail'
+import TopologyPage from './pages/TopologyPage'
+import MessageBusPage from './pages/MessageBusPage'
 
 export default function App() {
   const { view, setAgents, setApprovals, addEvent } = useAgentStore()
 
-  // WebSocket
   useWebSocket()
 
-  // Initial data fetch
   useEffect(() => {
     const fetchAll = async () => {
       const [agentsRes, approvalsRes, activityRes] = await Promise.all([
-        fetch('/api/agents'),
+        fetch('/api/agents?sessions=true'),
         fetch('/api/approvals'),
         fetch('/api/activity?limit=100'),
       ])
@@ -37,6 +37,8 @@ export default function App() {
         {view === 'command-center' && <CommandCenter />}
         {view === 'general'        && <GeneralChat />}
         {view === 'agent-detail'   && <AgentDetail />}
+        {view === 'topology'       && <TopologyPage />}
+        {view === 'message-bus'    && <MessageBusPage />}
       </main>
     </div>
   )

@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from app.core.registry import get_agents, get_agent, upsert_agent, update_status
 from app.core.events import push_activity
+from app.core.sessions import get_agent_sessions
+from app.core.message_bus import get_agent_message_count
 from app.models.agent import Agent
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
@@ -17,19 +19,30 @@ class NewAgentRequest(BaseModel):
     openclaw_agent_id: str = ""
 
 
-def _agent_dict(a: Agent) -> dict:
-    return {
+def _agent_dict(a: Agent, with_sessions: bool = False) -> dict:
+    d = {
         "id": a.id, "name": a.name, "emoji": a.emoji,
         "description": a.description, "script": a.script,
         "requires_approval": a.requires_approval, "status": a.status,
         "last_run": a.last_run.isoformat() if a.last_run else None,
         "last_log": a.last_log, "openclaw_agent_id": a.openclaw_agent_id,
+        # v3 fields
+        "model": a.model, "source": a.source, "a2a_enabled": a.a2a_enabled,
+        "workspace_path": a.workspace_path,
     }
+    if with_sessions:
+        oc_id = a.openclaw_agent_id or a.id
+        sessions = get_agent_sessions(oc_id)
+        d["sessions"]        = sessions
+        d["active_sessions"] = sum(1 for s in sessions if s["is_active"])
+        d["total_sessions"]  = len(sessions)
+        d["messages_today"]  = get_agent_message_count(a.id)
+    return d
 
 
 @router.get("")
-def list_agents():
-    return [_agent_dict(a) for a in get_agents()]
+def list_agents(sessions: bool = False):
+    return [_agent_dict(a, with_sessions=sessions) for a in get_agents()]
 
 
 @router.get("/{agent_id}")
@@ -37,7 +50,7 @@ def get_agent_detail(agent_id: str):
     a = get_agent(agent_id)
     if not a:
         raise HTTPException(404, "Agent không tồn tại")
-    return _agent_dict(a)
+    return _agent_dict(a, with_sessions=True)
 
 
 @router.post("")

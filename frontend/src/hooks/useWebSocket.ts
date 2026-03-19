@@ -1,14 +1,14 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useAgentStore } from '../stores/agentStore'
-import type { ActivityEvent } from '../types'
+import type { ActivityEvent, A2AMessage } from '../types'
 
 type WsHandler = (data: Record<string, unknown>) => void
 
 export function useWebSocket(onAgentReply?: WsHandler) {
   const ws = useRef<WebSocket | null>(null)
-  const { addEvent, setConnected, updateAgentStatus } = useAgentStore()
+  const { addEvent, setConnected, updateAgentStatus, addA2AMessage } = useAgentStore()
 
-  const connect = useCallback(() => {
+  const connect = useCallback((): void => {
     const url = `ws://${location.host}/ws/activity/stream`
     ws.current = new WebSocket(url)
 
@@ -31,9 +31,12 @@ export function useWebSocket(onAgentReply?: WsHandler) {
         if (data.type === 'agent_reply' && onAgentReply) {
           onAgentReply(data)
         }
+        if (data.type === 'agent_message') {
+          addA2AMessage(data as unknown as A2AMessage)
+        }
       } catch { /* ignore */ }
     }
-  }, [addEvent, setConnected, updateAgentStatus, onAgentReply])
+  }, [addEvent, setConnected, updateAgentStatus, addA2AMessage, onAgentReply])
 
   useEffect(() => { connect(); return () => ws.current?.close() }, [connect])
 
